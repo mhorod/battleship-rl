@@ -7,11 +7,11 @@ DESTROYER = 2
 SUBMARINE = 1
 
 SHIPS = {
-    CARRIER: 1,
-    BATTLESHIP: 1,
-    CRUISER: 1,
-    DESTROYER: 1,
-    SUBMARINE: 1
+    CARRIER: 2,
+    BATTLESHIP: 2,
+    CRUISER: 3,
+    DESTROYER: 3,
+    SUBMARINE: 0,
 }
 
 BOARD_SIZE = 10
@@ -30,7 +30,7 @@ class Board:
         
     def __getitem__(self, pos):
         if pos[0] < 0 or pos[0] >= BOARD_SIZE or pos[1] < 0 or pos[1] >= BOARD_SIZE:
-            return None
+            return Tile.EMPTY
         return self.tiles[pos[0]][pos[1]]
     
     def __setitem__(self, pos, tile):
