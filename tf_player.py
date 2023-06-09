@@ -14,7 +14,7 @@ class TFShooter(Shooter):
         self.model = model
     
     def shoot_many(self, boards):
-        xs = np.array([board_to_sample(board, board)[0] for board in boards])
+        xs = np.array([board_to_sample(board)[0] for board in boards])
         ys = self.model.predict(xs, verbose=0)
         positions = []
         for board, y in zip(boards, ys):
@@ -27,7 +27,6 @@ class TFShooter(Shooter):
     
     def select_best_pos(self, board, predictions):
         tried = 0
-        
         while tried < BOARD_SIZE * BOARD_SIZE:
             pos = np.unravel_index(np.argmax(predictions), predictions.shape)
             if board[pos] == Tile.EMPTY:
@@ -54,81 +53,50 @@ def plot_predictions(shooter):
         shoot_board[pos] = Tile.HIT if ships[pos] == Tile.SHIP else Tile.MISS
 
 
-
-def board_to_sample(shoot_board, ship_board):
-    x = np.zeros((BOARD_SIZE, BOARD_SIZE, 4))
-    y = np.zeros((BOARD_SIZE, BOARD_SIZE))
-    for row in range(BOARD_SIZE):
-        for column in range(BOARD_SIZE):
-            tile = shoot_board[row, column]
-            if tile == Tile.EMPTY:
-                x[row, column, 0] = 1
-            elif tile == Tile.MISS:
-                x[row, column, 1] = 1
-            elif tile == Tile.HIT:
-                x[row, column, 2] = 1
-            
-            if ship_board[row, column] == Tile.SHIP:
-                y[row, column] = 1
-
-    return x, y
-
-def shoot(pos, ship_board, shoot_board):
-    tile = ship_board[pos]
-    if tile == Tile.SHIP:
-        shoot_board[pos] = Tile.HIT
-        return True
-    else:
-        shoot_board[pos] = Tile.MISS
-        return False
-    
-
+def board_to_sample(board):
+    return board.get_repr(), board.get_ship_repr()
 
 def make_dataset(placer, shooter, games):
     xs = []
     ys = []
-    ship_boards = [placer.place_ships() for _ in range(games)]
-    shoot_boards = [Board() for _ in range(games)]
-    ship_counts = [ship_board.count(Tile.SHIP) for ship_board in ship_boards]
+    boards = [Board(placer.place_ships()) for _ in range(games)]
+    ship_counts = [board.count_ship_tiles() for board in boards]
     moments_to_extract = [random.randint(10, BOARD_SIZE * BOARD_SIZE - 10) for _ in range(games)]
     game_length = 0
 
-    while len(ship_boards) > 0:
+    while len(boards) > 0:
         game_length += 1
-
         indices_to_remove = []
-        for i, moment in enumerate(moments_to_extract):
+        for i, (board, moment) in enumerate(zip(boards, moments_to_extract)):
             if game_length == moment:
-                x, y = board_to_sample(shoot_boards[i], ship_boards[i])
+                x, y = board_to_sample(boards[i])
                 xs.append(x)
                 ys.append(y)
                 indices_to_remove.append(i)
 
         for i in indices_to_remove[::-1]:
-            ship_boards.pop(i)
-            shoot_boards.pop(i)
+            boards.pop(i)
             ship_counts.pop(i)
             moments_to_extract.pop(i)
 
-        if len(ship_boards) == 0:
+        if len(boards) == 0:
             break
 
-        shots = shooter.shoot_many(shoot_boards)
+        shots = shooter.shoot_many(boards)
         indices_to_remove = []
-        for i, (ship_board, shoot_board, shot) in enumerate(zip(ship_boards, shoot_boards, shots)):
-            result = shoot(shot, ship_board, shoot_board)
-            if result:
+        for i, (board, shot) in enumerate(zip(boards, shots)):
+            result = board.shoot(shot)
+            if result == ShotResult.HIT or result == ShotResult.SUNK:
                 ship_counts[i] -= 1
                 if ship_counts[i] == 0:
                     indices_to_remove.append(i)
         
         for i in indices_to_remove[::-1]:
-            x, y = board_to_sample(shoot_boards[i], ship_boards[i])
+            x, y = board_to_sample(board)
             xs.append(x)
             ys.append(y)
 
-            ship_boards.pop(i)
-            shoot_boards.pop(i)
+            boards.pop(i)
             ship_counts.pop(i)
             moments_to_extract.pop(i)
 
@@ -150,7 +118,7 @@ def iterate_fitting(model_func, start_shooter, games, epochs, iterations):
 
 def make_dense_model():
     dense_model = models.Sequential([
-        layers.Flatten(input_shape=(BOARD_SIZE, BOARD_SIZE, 4)),
+        layers.Flatten(input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
         layers.Dense(32, activation='relu'),
         layers.Dense(32, activation='relu'),
         layers.Dense(BOARD_SIZE * BOARD_SIZE, activation='sigmoid'),
@@ -163,7 +131,7 @@ def make_dense_model():
 
 def make_cnn_model():
     cnn_model = models.Sequential([
-        layers.Conv2D(32, (3, 3), activation='relu', input_shape=(BOARD_SIZE, BOARD_SIZE, 4)),
+        layers.Conv2D(32, (3, 3), activation='relu', input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
         layers.MaxPooling2D((2, 2)),
         layers.Conv2D(64, (3, 3), activation='relu'),
         layers.MaxPooling2D((2, 2)),
@@ -178,8 +146,8 @@ def make_cnn_model():
     return cnn_model
 
 
-dense_shooter = iterate_fitting(make_dense_model, RandomPlayer(), games=3000, epochs=100, iterations=2)
-
+dense_shooter = iterate_fitting(make_dense_model, RandomPlayer(), games=5000, epochs=100, iterations=1)
+plot_predictions(dense_shooter)
 
 #cnn_shooter = iterate_fitting(make_cnn_model, RandomPlayer(), games=2000, epochs=200, iterations=1)
 #plot_predictions(cnn_shooter)
