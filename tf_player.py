@@ -37,24 +37,33 @@ class TFShooter(Shooter):
 
 
 def plot_predictions(shooter):
-    ships = RandomPlacer().place_ships()
-    shoot_board = Board()
-
-    while ships.count(Tile.SHIP) > 0:
+    board = Board(RandomPlacer().place_ships())
+    while board.count_ship_tiles() > 0:
         fig, ax = plt.subplots(1, 3)
+        x, y = board_to_sample(board)
 
-        x, y = board_to_sample(shoot_board, ships)
-        ax[0].matshow(x, vmin=-1, vmax=1)
-        ax[1].matshow(y, vmin=-1, vmax=1)
+        xx = np.zeros((BOARD_SIZE, BOARD_SIZE))
+        for row in range(BOARD_SIZE):
+            for col in range(BOARD_SIZE):
+                xx[row, col] = np.argmax(x[row, col])
+
+
+        ax[0].matshow(xx, vmin=0, vmax=3)
+        ax[1].matshow(y, vmin=0, vmax=1)
+
         ax[2].matshow(shooter.model.predict(np.array([x]), verbose=0)[0])
         plt.show()
-
-        pos = shooter.shoot(shoot_board)
-        shoot_board[pos] = Tile.HIT if ships[pos] == Tile.SHIP else Tile.MISS
+        board.shoot(shooter.shoot(board))
 
 
 def board_to_sample(board):
-    return board.get_repr(), board.get_ship_repr()
+    x = board.get_repr()
+    y = board.get_ship_repr()
+    for row in range(BOARD_SIZE):
+        for col in range(BOARD_SIZE):
+            if board[row, col] != Tile.EMPTY:
+                y[row, col] = 0
+    return x, y
 
 def make_dataset(placer, shooter, games):
     xs = []
@@ -105,12 +114,12 @@ def make_dataset(placer, shooter, games):
 
 def iterate_fitting(model_func, start_shooter, games, epochs, iterations):
     shooter = start_shooter
+    model = model_func()
     for i in range(iterations):
         print("Iteration ", i)
         dataset = make_dataset(RandomPlacer(), shooter, games)
         size = len(list(dataset))
         train, val = dataset.take(int(0.8 * size)), dataset.skip(int(0.8 * size))
-        model = model_func()
         model.fit(train.batch(32), epochs=epochs, validation_data=val.batch(32))
         shooter = TFShooter(model)
     return shooter
@@ -119,8 +128,6 @@ def iterate_fitting(model_func, start_shooter, games, epochs, iterations):
 def make_dense_model():
     dense_model = models.Sequential([
         layers.Flatten(input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
-        layers.Dense(32, activation='relu'),
-        layers.Dense(32, activation='relu'),
         layers.Dense(BOARD_SIZE * BOARD_SIZE, activation='sigmoid'),
         layers.Reshape((BOARD_SIZE, BOARD_SIZE))
     ])
@@ -146,8 +153,7 @@ def make_cnn_model():
     return cnn_model
 
 
-dense_shooter = iterate_fitting(make_dense_model, RandomPlayer(), games=5000, epochs=100, iterations=1)
-plot_predictions(dense_shooter)
+dense_shooter = iterate_fitting(make_dense_model, RandomPlayer(), games=10000, epochs=200, iterations=2)
 
 #cnn_shooter = iterate_fitting(make_cnn_model, RandomPlayer(), games=2000, epochs=200, iterations=1)
 #plot_predictions(cnn_shooter)
@@ -165,3 +171,5 @@ dense_results = compare_placer_with_shooter(RandomPlayer(), dense_shooter, GAMES
 print("Random player: ", np.mean(random_results))
 print("Dense player:  ", np.mean(dense_results))
 #print("CNN player:    ", np.mean(cnn_results))
+
+plot_predictions(dense_shooter)
