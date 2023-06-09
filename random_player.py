@@ -37,7 +37,7 @@ class RandomPlacer(Placer):
                 return True
             board.remove_ship(ship)
 
-        return False    
+        return False
 
 
 class RandomShooter(Shooter):

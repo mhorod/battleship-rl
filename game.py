@@ -59,7 +59,7 @@ class ShipBoard:
         self.ships = [[None] * BOARD_SIZE for _ in range(BOARD_SIZE)]
 
     def get_repr(self):
-        result = np.zeros((BOARD_SIZE, BOARD_SIZE))
+        result = np.zeros((BOARD_SIZE, BOARD_SIZE), dtype=np.int)
         for x in range(BOARD_SIZE):
             for y in range(BOARD_SIZE):
                 if self.ships[x][y] is not None:
@@ -109,7 +109,7 @@ class ShipBoard:
 class Board:
     def __init__(self, ship_board):
         self.ship_board = ship_board
-        self.repr = np.zeros((BOARD_SIZE, BOARD_SIZE, len(Tile)))
+        self.repr = np.zeros((BOARD_SIZE, BOARD_SIZE, len(Tile)), dtype=np.int)
         self.repr[:, :, Tile.EMPTY] = 1
 
     def get_repr(self):

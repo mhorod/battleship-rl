@@ -1,13 +1,14 @@
-from player import *
-from random_player import *
 
 import tensorflow as tf
 from tensorflow.keras import datasets, layers, models
 
-import numpy as np
-from stats import *
-
 import matplotlib.pyplot as plt
+import numpy as np
+
+from dataset import *
+from player import *
+from random_player import *
+from stats import *
 
 class TFShooter(Shooter):
     def __init__(self, model):
@@ -56,68 +57,14 @@ def plot_predictions(shooter):
         board.shoot(shooter.shoot(board))
 
 
-def board_to_sample(board):
-    x = board.get_repr()
-    y = board.get_ship_repr()
-    for row in range(BOARD_SIZE):
-        for col in range(BOARD_SIZE):
-            if board[row, col] != Tile.EMPTY:
-                y[row, col] = 0
-    return x, y
-
-def make_dataset(placer, shooter, games):
-    xs = []
-    ys = []
-    boards = [Board(placer.place_ships()) for _ in range(games)]
-    ship_counts = [board.count_ship_tiles() for board in boards]
-    moments_to_extract = [random.randint(10, BOARD_SIZE * BOARD_SIZE - 10) for _ in range(games)]
-    game_length = 0
-
-    while len(boards) > 0:
-        game_length += 1
-        indices_to_remove = []
-        for i, (board, moment) in enumerate(zip(boards, moments_to_extract)):
-            if game_length == moment:
-                x, y = board_to_sample(boards[i])
-                xs.append(x)
-                ys.append(y)
-                indices_to_remove.append(i)
-
-        for i in indices_to_remove[::-1]:
-            boards.pop(i)
-            ship_counts.pop(i)
-            moments_to_extract.pop(i)
-
-        if len(boards) == 0:
-            break
-
-        shots = shooter.shoot_many(boards)
-        indices_to_remove = []
-        for i, (board, shot) in enumerate(zip(boards, shots)):
-            result = board.shoot(shot)
-            if result == ShotResult.HIT or result == ShotResult.SUNK:
-                ship_counts[i] -= 1
-                if ship_counts[i] == 0:
-                    indices_to_remove.append(i)
-        
-        for i in indices_to_remove[::-1]:
-            x, y = board_to_sample(board)
-            xs.append(x)
-            ys.append(y)
-
-            boards.pop(i)
-            ship_counts.pop(i)
-            moments_to_extract.pop(i)
-
-    dataset = tf.data.Dataset.from_tensor_slices((xs, ys))
-    return dataset
 
 def iterate_fitting(model_func, start_shooter, games, epochs, iterations):
     shooter = start_shooter
     model = model_func()
     for i in range(iterations):
         print("Iteration ", i)
-        dataset = make_dataset(RandomPlacer(), shooter, games)
+        xs, ys = make_dataset(RandomPlacer(), shooter, games)
+        dataset = tf.data.Dataset.from_tensor_slices((xs, ys))
         size = len(list(dataset))
         train, val = dataset.take(int(0.8 * size)), dataset.skip(int(0.8 * size))
         model.fit(train.batch(32), epochs=epochs, validation_data=val.batch(32))
@@ -125,16 +72,27 @@ def iterate_fitting(model_func, start_shooter, games, epochs, iterations):
     return shooter
 
 
-def make_dense_model():
-    dense_model = models.Sequential([
+def make_perceptron_model():
+    perceptron_model = models.Sequential([
         layers.Flatten(input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
         layers.Dense(BOARD_SIZE * BOARD_SIZE, activation='sigmoid'),
         layers.Reshape((BOARD_SIZE, BOARD_SIZE))
     ])
 
-    dense_model.compile(optimizer='adam',loss='binary_crossentropy')
+    perceptron_model.compile(optimizer='adam',loss='binary_crossentropy')
+    return perceptron_model
 
-    return dense_model
+def make_dense_model():
+    perceptron_model = models.Sequential([
+        layers.Flatten(input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
+        layers.Dense(128, activation='relu'),
+        layers.Dense(BOARD_SIZE * BOARD_SIZE, activation='sigmoid'),
+        layers.Reshape((BOARD_SIZE, BOARD_SIZE))
+    ])
+
+    perceptron_model.compile(optimizer='adam',loss='binary_crossentropy')
+
+    return perceptron_model
 
 def make_cnn_model():
     cnn_model = models.Sequential([
@@ -153,23 +111,24 @@ def make_cnn_model():
     return cnn_model
 
 
-dense_shooter = iterate_fitting(make_dense_model, RandomPlayer(), games=10000, epochs=200, iterations=2)
+#perceptron_shooter = iterate_fitting(make_perceptron_model, RandomPlayer(), games=10000, epochs=200, iterations=1)
+dense_shooter = iterate_fitting(make_dense_model, RandomPlayer(), games=10000, epochs=100, iterations=1)
 
-#cnn_shooter = iterate_fitting(make_cnn_model, RandomPlayer(), games=2000, epochs=200, iterations=1)
-#plot_predictions(cnn_shooter)
+players = [
+    (RandomPlayer(), "Random"),
+    #(perceptron_shooter, "Perceptron"),
+    (dense_shooter, "Dense"),
+]
 
+game_lengths =[]
 GAMES = 200
-print("random playing...")
-random_results = compare_placer_with_shooter(RandomPlayer(), RandomPlayer(), GAMES)
+for player, name in players:
+    player_lengths = compare_placer_with_shooter(RandomPlacer(), player, matches=GAMES)
+    game_lengths.append(player_lengths)
+    print(name, ":", np.mean(player_lengths), "±", np.std(player_lengths))
 
-print("dense playing...")
-dense_results = compare_placer_with_shooter(RandomPlayer(), dense_shooter, GAMES)
-
-#print("cnn playing...")
-#cnn_results = compare_placer_with_shooter(RandomPlayer(), cnn_shooter, GAMES)
-
-print("Random player: ", np.mean(random_results))
-print("Dense player:  ", np.mean(dense_results))
-#print("CNN player:    ", np.mean(cnn_results))
-
-plot_predictions(dense_shooter)
+fig, ax = plt.subplots(1, len(players))
+for i, (player, name) in enumerate(players):
+    ax[i].hist(game_lengths[i], bins=range(1, 100))
+    ax[i].set_title(name)
+plt.show()
