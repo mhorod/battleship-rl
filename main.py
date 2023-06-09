@@ -5,31 +5,13 @@ import random
 
 import pygame
 
-CARRIER = 5
-BATTLESHIP = 4
-CRUISER = 3
-DESTROYER = 2
-SUBMARINE = 1
-
-SHIPS = {
-    CARRIER: 1,
-    BATTLESHIP: 1,
-    CRUISER: 1,
-    DESTROYER: 1,
-    SUBMARINE: 1
-}
-
-BOARD_SIZE = 10
+from game import *
+from stats import *
+import random_player
 
 TILE_SIZE = 50
 MARGIN = 50
 
-
-class Tile(Enum):
-    EMPTY = auto()
-    MISS = auto()
-    HIT = auto()
-    SHIP = auto()
 
 
 class Board:
@@ -328,4 +310,11 @@ class Game:
                     x, y, TILE_SIZE, TILE_SIZE))
 
 
-Game().run()
+# Game().run()
+
+p1 = random_player.RandomPlayer()
+p2 = random_player.RandomPlayer()
+
+game_lengths = compare_placer_with_shooter(p1, p2, 1000)
+average = sum(game_lengths) / len(game_lengths)
+print(average)
