@@ -7,7 +7,7 @@ from game import *
 
 class RandomPlacer(Placer):
     def place_ships(self) -> Board:
-        board = Board()
+        board = ShipBoard()
         positions = [(i, j) for i in range(BOARD_SIZE) for j in range(BOARD_SIZE)]
         random.shuffle(positions)
         ships_to_place = []
@@ -21,106 +21,31 @@ class RandomPlacer(Placer):
         if not ships:
             return True
 
-        ship = ships[0]
         for pos in positions:
-            actions = [
-                (
-                    lambda: self.place_ship_horizontally(board, ship, pos),
-                    lambda: self.remove_ship_horizontally(board, ship, pos)
-                ),
-                ( 
-                    lambda: self.place_ship_vertically(board, ship, pos),
-                    lambda: self.remove_ship_vertically(board, ship, pos)
-                )
-            ]
+            possible_ships = [ship for ship in [
+                Ship(pos, ships[0], Orientation.HORIZONTAL),
+                Ship(pos, ships[0], Orientation.VERTICAL)
+            ] if board.can_place_ship(ship)]
 
-            h = self.can_place_ship_horizontally(board, ship, pos)
-            v = self.can_place_ship_vertically(board, ship, pos)
-
-            if h and v:
-                action = random.choice(actions)
-            elif h:
-                action = actions[0]
-            elif v:
-                action = actions[1]
-            else:
+            if not possible_ships:
                 continue
 
-            place_ship, remove_ship = action
-            place_ship()
+            ship = random.choice(possible_ships)
+
+            board.place_ship(ship)
             if self.place_ships_with_backtracking(board, ships[1:], positions):
                 return True
-            remove_ship()
+            board.remove_ship(ship)
 
         return False    
-
-    def can_place_ship_horizontally(self, board, ship, pos):
-        if pos[1] + ship > BOARD_SIZE:
-            return False
-        
-        if board[pos] != Tile.EMPTY:
-            return False
-        
-        if board[pos[0], pos[1] - 1] != Tile.EMPTY or board[pos[0], pos[1] + ship] != Tile.EMPTY:
-            return False
-
-        for i in range(ship):
-            if board[pos[0], pos[1] + i] != Tile.EMPTY:
-                return False
-            if board[pos[0] - 1, pos[1] + i] != Tile.EMPTY:
-                return False
-            if board[pos[0] + 1, pos[1] + i] != Tile.EMPTY:
-                return False
-            
-        return True
-
-    def can_place_ship_vertically(self, board, ship, pos):
-        if pos[0] + ship > BOARD_SIZE:
-            return False
-        
-        if board[pos] != Tile.EMPTY:
-            return False
-        
-        if board[pos[0] - 1, pos[1]] != Tile.EMPTY or board[pos[0] + ship, pos[1]] != Tile.EMPTY:
-            return False
-
-        for i in range(ship):
-            if board[pos[0] + i, pos[1]] != Tile.EMPTY:
-                return False
-            if board[pos[0] + i, pos[1] - 1] != Tile.EMPTY:
-                return False
-            if board[pos[0] + i, pos[1] + 1] != Tile.EMPTY:
-                return False
-            
-        return True
-
-
-    def place_ship_horizontally(self, board, ship, pos):
-        for i in range(ship):
-            board[pos[0], pos[1] + i] = Tile.SHIP
-    
-    def remove_ship_horizontally(self, board, ship, pos):
-        for i in range(ship):
-            board[pos[0], pos[1] + i] = Tile.EMPTY
-
-    def place_ship_vertically(self, board, ship, pos):
-        for i in range(ship):
-            board[pos[0] + i, pos[1]] = Tile.SHIP
-
-    def remove_ship_vertically(self, board, ship, pos):
-        for i in range(ship):
-            board[pos[0] + i, pos[1]] = Tile.EMPTY
 
 
 class RandomShooter(Shooter):
     def shoot(self, board) -> tuple:
-        viable_positions = []
-        for i in range(BOARD_SIZE):
-            for j in range(BOARD_SIZE):
-                if board[i, j] == Tile.EMPTY:
-                    viable_positions.append((i, j))
-        return random.choice(viable_positions)
-
+        while(True):
+            pos = (random.randint(0, BOARD_SIZE - 1), random.randint(0, BOARD_SIZE - 1))
+            if board[pos] == Tile.EMPTY:
+                return pos
 
 class RandomPlayer(RandomPlacer, RandomShooter):
     pass

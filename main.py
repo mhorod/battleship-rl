@@ -5,6 +5,8 @@ import random
 
 import pygame
 
+import matplotlib.pyplot as plt
+
 from game import *
 from stats import *
 import random_player
@@ -35,7 +37,7 @@ TILE_COLORS = {
     Tile.EMPTY: (68, 114, 202),
     Tile.MISS: (10, 54, 157),
     Tile.HIT: (255, 0, 0),
-    Tile.SHIP: (207, 222, 231),
+    Tile.SUNK: (207, 222, 231),
 }
 
 
@@ -315,6 +317,8 @@ class Game:
 p1 = random_player.RandomPlayer()
 p2 = random_player.RandomPlayer()
 
-game_lengths = compare_placer_with_shooter(p1, p2, 1000)
+game_lengths = compare_placer_with_shooter(p1, p2, 100)
+# plt.hist(game_lengths)
+# plt.show()
 average = sum(game_lengths) / len(game_lengths)
 print(average)
