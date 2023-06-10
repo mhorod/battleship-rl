@@ -11,7 +11,6 @@ class RandomPlacer(Placer):
         ships_to_place = []
         for ship, count in SHIPS.items():
             ships_to_place += [ship] * count
-        random.shuffle(ships_to_place)
         self.place_ships_with_backtracking(board, ships_to_place)
         return board
 
