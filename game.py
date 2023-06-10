@@ -8,10 +8,10 @@ DESTROYER = 2
 SUBMARINE = 1
 
 SHIPS = {
-    CARRIER: 2,
-    BATTLESHIP: 2,
-    CRUISER: 3,
-    DESTROYER: 3,
+    CARRIER: 1,
+    BATTLESHIP: 1,
+    CRUISER: 2,
+    DESTROYER: 1,
     SUBMARINE: 0,
 }
 
@@ -106,6 +106,15 @@ class ShipBoard:
             return ShotResult.MISS
         return self.ships[pos[0]][pos[1]].shoot(pos)
 
+    def sunken_ships(self):
+        sunken = set()
+        for r in range(BOARD_SIZE):
+            for c in range(BOARD_SIZE):
+                ship = self.ships[r][c]
+                if ship is not None and np.all(ship.hits):
+                    sunken.add(ship)
+        return [ship.length for ship in sunken]
+
 class Board:
     def __init__(self, ship_board):
         self.ship_board = ship_board
@@ -132,6 +141,17 @@ class Board:
 
     def count_ship_tiles(self):
         return self.ship_board.count_ship_tiles()
+
+    def hash(self):
+        return hash(self.repr.tobytes())
+
+    def __eq__(self, other):
+        return self.hash() == other.hash() and np.all(self.repr == other.repr)
+
+    def clone(self):
+        new_board =  Board(self.ship_board)
+        new_board.repr = np.copy(self.repr)
+        return new_board
 
     def shoot(self, pos):
         if self[pos] != Tile.EMPTY:

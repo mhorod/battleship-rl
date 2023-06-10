@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 from game import *
 from player import *
@@ -40,12 +41,16 @@ class NaiveBayesShooter(Shooter):
 
 
     def shoot(self, board):
+        predictions = self.predict(board)
+        return self.select_best_pos(board, predictions)
+
+    def predict(self, board):
         predictions = np.zeros((BOARD_SIZE, BOARD_SIZE))
         board_repr = board.get_repr()
         for row in range(BOARD_SIZE):
             for col in range(BOARD_SIZE):
                 predictions[row, col] = self.predict_one(row, col, board_repr)
-        return self.select_best_pos(board, predictions)
+        return predictions
 
     def select_best_pos(self, board, predictions):
         tried = 0
@@ -68,14 +73,35 @@ class NaiveBayesShooter(Shooter):
                 px_negative += np.log(self.x_phis[row, col, 0, i, j, k])
                 px_positive += np.log(self.x_phis[row, col, 1, i, j, k])
 
-        return np.exp(px_positive) / (np.exp(px_positive) + np.exp(px_negative))
+        return np.exp(px_positive - px_negative)
 
 
-xs, ys = make_dataset(RandomPlacer(), RandomShooter(), 20000)
+def plot_predictions(shooter):
+    board = Board(RandomPlacer().place_ships())
+    while board.count_ship_tiles() > 0:
+        fig, ax = plt.subplots(1, 3)
+        x, y = board_to_sample(board)
+
+        xx = np.zeros((BOARD_SIZE, BOARD_SIZE))
+        for row in range(BOARD_SIZE):
+            for col in range(BOARD_SIZE):
+                xx[row, col] = np.argmax(x[row, col])
+
+
+        ax[0].matshow(xx, vmin=0, vmax=3)
+        ax[1].matshow(y, vmin=0, vmax=1)
+        ax[2].matshow(shooter.predict(board))
+
+        plt.show()
+        board.shoot(shooter.shoot(board))
+
+xs, ys = make_dataset(RandomPlacer(), RandomShooter(), 10000)
 print("Dataset made")
 nb = NaiveBayesShooter()
 nb.fit(xs, ys)
 print("Naive Bayes Shooter fitted")
+
+plot_predictions(nb)
 
 game_lengths = compare_placer_with_shooter(RandomPlacer(), nb, 10)
 print("Naive Bayes Shooter")

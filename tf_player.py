@@ -8,6 +8,7 @@ import numpy as np
 from dataset import *
 from player import *
 from random_player import *
+from hybrid_player import *
 from stats import *
 
 class TFShooter(Shooter):
@@ -16,7 +17,7 @@ class TFShooter(Shooter):
     
     def shoot_many(self, boards):
         xs = np.array([board_to_sample(board)[0] for board in boards])
-        ys = self.model.predict(xs, verbose=0)
+        ys = np.array(self.model(xs, training=False))
         positions = []
         for board, y in zip(boards, ys):
             pos = self.select_best_pos(board, y)
@@ -63,7 +64,7 @@ def fit_model(model, shooter, games, epochs):
     dataset = tf.data.Dataset.from_tensor_slices((xs, ys))
     size = len(list(dataset))
     train, val = dataset.take(int(0.8 * size)), dataset.skip(int(0.8 * size))
-    history = model.fit(train.batch(32), epochs=epochs, validation_data=val.batch(32))
+    history = model.fit(train.batch(64), epochs=epochs, validation_data=val.batch(64))
     return history, TFShooter(model)
 
 def make_perceptron_model():
@@ -90,35 +91,33 @@ def make_dense_model():
 
 def make_cnn_model():
     cnn_model = models.Sequential([
-        layers.Conv2D(128, (5, 5), activation='relu', input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
-        layers.AveragePooling2D((3, 3)),
+        layers.Conv2D(64, (3, 3), activation='relu', input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
+        layers.MaxPooling2D((2, 2)),
         layers.Flatten(),
         layers.Dense(BOARD_SIZE * BOARD_SIZE, activation='sigmoid'),
         layers.Reshape((BOARD_SIZE, BOARD_SIZE))
     ])
 
-    cnn_model.compile(optimizer='rmsprop',
-                    loss='binary_crossentropy')
+    cnn_model.compile(optimizer='rmsprop', loss='binary_crossentropy')
 
     return cnn_model
 
 
 #perceptron_shooter = iterate_fitting(make_perceptron_model, RandomPlayer(), games=10000, epochs=100, iterations=1)
-history, dense_shooter = fit_model(make_dense_model(), RandomPlayer(), games=10000, epochs=100)
-#history, cnn_shooter = fit_model(make_cnn_model(), RandomShooter(), games=10000, epochs=200)
-
-plt.plot(history.history['loss'], label='loss')
-plt.plot(history.history['val_loss'], label = 'val_loss')
-plt.xlabel('Epoch')
-plt.ylabel('Loss')
-plt.show()
+#history, dense_shooter = fit_model(make_dense_model(), RandomPlayer(), games=10000, epochs=50)
+#history, dense_shooter = fit_model(dense_shooter.model, dense_shooter, games=10000, epochs=50)
+history, cnn_shooter = fit_model(make_cnn_model(), RandomShooter(), games=40000, epochs=100)
+hybrid_shooter = HybridShooter(cnn_shooter)
 
 players = [
     #(RandomPlayer(), "Random"),
     #(perceptron_shooter, "Perceptron"),
-    (dense_shooter, "Dense"),
-    #(cnn_shooter, "CNN")
+    #(dense_shooter, "Dense"),
+    (cnn_shooter, "CNN"),
+    (hybrid_shooter, "Hybrid"),
 ]
+
+#plot_predictions(cnn_shooter)
 
 game_lengths =[]
 GAMES = 200

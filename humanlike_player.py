@@ -83,13 +83,3 @@ class HumanLikeShooter(Shooter):
                     around = [pos for pos in around if board[pos] == Tile.EMPTY and self.can_hit(board, *pos)]
                     if around:
                         return random.choice(around)
-
-shooter = HumanLikeShooter()
-placer = RandomPlacer()
-
-game_lengths = compare_placer_with_shooter(placer, shooter, 100)
-plt.hist(game_lengths, bins=range(100))
-plt.show()
-print("Human-like player")
-print("Average game length: {}".format(np.mean(game_lengths)))
-print("Standard deviation: {}".format(np.std(game_lengths)))
