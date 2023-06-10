@@ -58,19 +58,13 @@ def plot_predictions(shooter):
 
 
 
-def iterate_fitting(model_func, start_shooter, games, epochs, iterations):
-    shooter = start_shooter
-    model = model_func()
-    for i in range(iterations):
-        print("Iteration ", i)
-        xs, ys = make_dataset(RandomPlacer(), shooter, games)
-        dataset = tf.data.Dataset.from_tensor_slices((xs, ys))
-        size = len(list(dataset))
-        train, val = dataset.take(int(0.8 * size)), dataset.skip(int(0.8 * size))
-        model.fit(train.batch(32), epochs=epochs, validation_data=val.batch(32))
-        shooter = TFShooter(model)
-    return shooter
-
+def fit_model(model, shooter, games, epochs):
+    xs, ys = make_dataset(RandomPlacer(), shooter, games)
+    dataset = tf.data.Dataset.from_tensor_slices((xs, ys))
+    size = len(list(dataset))
+    train, val = dataset.take(int(0.8 * size)), dataset.skip(int(0.8 * size))
+    history = model.fit(train.batch(32), epochs=epochs, validation_data=val.batch(32))
+    return history, TFShooter(model)
 
 def make_perceptron_model():
     perceptron_model = models.Sequential([
@@ -96,28 +90,34 @@ def make_dense_model():
 
 def make_cnn_model():
     cnn_model = models.Sequential([
-        layers.Conv2D(32, (3, 3), activation='relu', input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
-        layers.MaxPooling2D((2, 2)),
-        layers.Conv2D(64, (3, 3), activation='relu'),
-        layers.MaxPooling2D((2, 2)),
+        layers.Conv2D(128, (5, 5), activation='relu', input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
+        layers.AveragePooling2D((3, 3)),
         layers.Flatten(),
         layers.Dense(BOARD_SIZE * BOARD_SIZE, activation='sigmoid'),
         layers.Reshape((BOARD_SIZE, BOARD_SIZE))
     ])
 
-    cnn_model.compile(optimizer='adam',
+    cnn_model.compile(optimizer='rmsprop',
                     loss='binary_crossentropy')
 
     return cnn_model
 
 
-#perceptron_shooter = iterate_fitting(make_perceptron_model, RandomPlayer(), games=10000, epochs=200, iterations=1)
-dense_shooter = iterate_fitting(make_dense_model, RandomPlayer(), games=10000, epochs=100, iterations=1)
+#perceptron_shooter = iterate_fitting(make_perceptron_model, RandomPlayer(), games=10000, epochs=100, iterations=1)
+history, dense_shooter = fit_model(make_dense_model(), RandomPlayer(), games=10000, epochs=100)
+#history, cnn_shooter = fit_model(make_cnn_model(), RandomShooter(), games=10000, epochs=200)
+
+plt.plot(history.history['loss'], label='loss')
+plt.plot(history.history['val_loss'], label = 'val_loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.show()
 
 players = [
-    (RandomPlayer(), "Random"),
+    #(RandomPlayer(), "Random"),
     #(perceptron_shooter, "Perceptron"),
     (dense_shooter, "Dense"),
+    #(cnn_shooter, "CNN")
 ]
 
 game_lengths =[]
@@ -127,8 +127,13 @@ for player, name in players:
     game_lengths.append(player_lengths)
     print(name, ":", np.mean(player_lengths), "±", np.std(player_lengths))
 
+'''
 fig, ax = plt.subplots(1, len(players))
+if len(players) == 1:
+    ax = [ax]
+
 for i, (player, name) in enumerate(players):
     ax[i].hist(game_lengths[i], bins=range(1, 100))
     ax[i].set_title(name)
 plt.show()
+'''
