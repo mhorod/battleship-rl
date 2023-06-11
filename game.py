@@ -115,6 +115,9 @@ class ShipBoard:
                     sunken.add(ship)
         return [ship.length for ship in sunken]
 
+    def __getitem__(self, pos):
+        return self.ships[pos[0]][pos[1]]
+
 class Board:
     def __init__(self, ship_board):
         self.ship_board = ship_board

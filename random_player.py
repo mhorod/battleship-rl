@@ -6,7 +6,7 @@ from game import *
 
 
 class RandomPlacer(Placer):
-    def place_ships(self) -> Board:
+    def place_ships(self) -> ShipBoard:
         board = ShipBoard()
         ships_to_place = []
         for ship, count in SHIPS.items():

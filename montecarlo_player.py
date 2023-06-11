@@ -9,24 +9,16 @@ from random_player import *
 from stats import *
 from dataset import *
 
-class HeatmapShooter(Shooter):
+class MonteCarloPredictor(ShipPredictor):
+    '''
+    Predicts ship placement using Monte Carlo simulations.
+    Performs a number of random ship placements that are consistent with the board
+    and counts how often a ship is placed on a given tile.
+    '''
     def __init__(self, simulations):
         self.simulations = simulations
 
-    def shoot(self, board) -> tuple:
-        pos =  self.select_best_pos(board, self.predict(board))
-        return pos
-
-    def select_best_pos(self, board, predictions):
-        tried = 0
-        while tried < BOARD_SIZE * BOARD_SIZE:
-            pos = np.unravel_index(np.argmax(predictions), predictions.shape)
-            if board[pos] == Tile.EMPTY:
-                return pos
-            predictions[pos] = -1
-            tried += 1
-
-    def predict(self, board):
+    def predict_ships(self, board):
         values = np.zeros((BOARD_SIZE, BOARD_SIZE))
         for _ in range(self.simulations):
             values += self.simulate(board)
@@ -57,8 +49,6 @@ class HeatmapShooter(Shooter):
         return ship_lengths
 
 
-
-    
     def random_placement(self, board, good, avoid, ship_lengths):
         for pos in good:
             for ship_length in ship_lengths:
@@ -115,26 +105,6 @@ class HeatmapShooter(Shooter):
         return values
 
 
-def plot_predictions(shooter):
-    board = Board(RandomPlacer().place_ships())
-    while board.count_ship_tiles() > 0:
-        fig, ax = plt.subplots(1, 3)
-        x, y = board_to_sample(board)
-
-        xx = np.zeros((BOARD_SIZE, BOARD_SIZE))
-        for row in range(BOARD_SIZE):
-            for col in range(BOARD_SIZE):
-                xx[row, col] = np.argmax(x[row, col])
-
-
-        ax[0].matshow(xx, vmin=0, vmax=3)
-        ax[1].matshow(y, vmin=0, vmax=1)
-
-        ax[2].matshow(shooter.predict(board))
-        plt.show()
-        board.shoot(shooter.shoot(board))
-
-shooter = HeatmapShooter(100)
-#plot_predictions(shooter)
-game_lengths = compare_placer_with_shooter(RandomPlacer(), shooter, 10)
-print(f"Heatmap shooter: {np.mean(game_lengths)} " + u"\u00B1" + f" {np.std(game_lengths)}")
+class MonteCarloShooter(PredictionShooter):
+    def __init__(self, simulations):
+        super().__init__(MonteCarloPredictor(simulations))

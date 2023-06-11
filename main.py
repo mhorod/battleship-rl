@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from enum import Enum, auto
 
 import random
@@ -9,197 +8,137 @@ import matplotlib.pyplot as plt
 
 from game import *
 from stats import *
-import random_player
+
+from random_player import *
+from montecarlo_player import *
+from tf_player import *
 
 TILE_SIZE = 50
 MARGIN = 50
 
+BOARD_WIDTH, BOARD_HEIGHT = BOARD_SIZE * TILE_SIZE, BOARD_SIZE * TILE_SIZE
 
-
-TILE_COLORS = {
-    Tile.EMPTY: (68, 114, 202),
-    Tile.MISS: (10, 54, 157),
-    Tile.HIT: (255, 0, 0),
-    Tile.SUNK: (207, 222, 231),
+TILE_TO_COLOR = {
+    Tile.EMPTY: (255, 255, 255),
+    Tile.MISS: (50, 153, 213),
+    Tile.HIT: (220, 80, 70),
+    Tile.SUNK: (50, 50, 50),
 }
 
-
-class EventTypes(Enum):
-    SHOOT = auto()
-    END = auto()
+SHIP_COLOR = (160, 160, 160)
 
 
-class Event:
-    def __init__(self, cause_player, event_type):
-        self.cause_player = cause_player
-        self.event_type = event_type
-
-
-class Observer(ABC):
-    @abstractmethod
-    def update(self, event):
-        pass
-
-
-class Controls:
-    def __init__(self, player_id, game_core):
-        self.player_id = player_id
-        self.game_core = game_core
-
-    def shoot(self, pos):
-        return self.game_core.shoot(self.player_id, pos)
-
-    def is_self_caused(self, event):
-        return event.cause_player == self.player_id
-
-
-class GameCore:
-    def __init__(self, boards):
-        self.observers = []
-        self.boards = boards
-        self.current_player = 0
-        self.ship_count = [board.count(Tile.SHIP)
-                           for board in boards]
-        self.finished = False
-
-    def add_observer(self, observer):
-        self.observers.append(observer)
-
-    def get_controls(self, player_id):
-        return Controls(player_id, self)
-
-    def shoot(self, player_id, pos):
-        if player_id != self.current_player:
-            return False
-        attacked = 1 - player_id
-        if self.boards[attacked][pos] not in [Tile.SHIP, Tile.EMPTY]:
-            return False
-
-        event = Event(player_id, EventTypes.SHOOT)
-        event.pos = pos
-        if self.boards[attacked][pos] == Tile.EMPTY:
-            self.boards[attacked][pos] = Tile.MISS
-            event.result = Tile.MISS
-        else:
-            self.boards[attacked][pos] = Tile.HIT
-            event.result = Tile.HIT
-            self.ship_count[attacked] -= 1
-            if self.ship_count[attacked] == 0:
-                self.finished = True
-
-        self.current_player = 1 - self.current_player
-        self.notify_observers(event)
-        if self.finished:
-            event = Event(player_id, EventTypes.END)
-            event.winner = player_id
-            self.notify_observers(event)
-        return True
-
-    def notify_observers(self, event):
-        for observer in self.observers:
-            observer.update(event)
-
-
-class Player(Observer):
-    '''
-    Observer that receives only events that are relevant to the player
-    '''
-
-    def __init__(self, player):
-        self.player = player
-
-    def update(self, event):
-        if event.event_type == EventTypes.SHOOT:
-            self.player.update(event)
-
-
-class RandomPlayer(Observer):
-    def __init__(self, controls):
-        self.empty_tiles = [(i, j) for i in range(BOARD_SIZE)
-                            for j in range(BOARD_SIZE)]
-        self.controls = controls
-
-    def shoot(self):
-        pos = random.choice(self.empty_tiles)
-        self.empty_tiles.remove(pos)
-        return self.controls.shoot(pos)
-
-    def update(self, event):
-        pass
-
-
-class HitObserver(Observer):
-    def __init__(self, player_id, board):
-        self.player_id = player_id
+class HitBoardDisplay:
+    def __init__(self, surface, board):
+        self.surface = surface
         self.board = board
 
-    def update(self, event):
-        if event.event_type == EventTypes.SHOOT and event.cause_player == self.player_id:
-            self.board[event.pos] = event.result
+    def draw(self):
+        for r in range(BOARD_SIZE):
+            for c in range(BOARD_SIZE):
+                self.draw_tile(r, c)
+        pygame.draw.rect(self.surface, (0, 0, 0), pygame.Rect(0, 0, BOARD_WIDTH, BOARD_HEIGHT), 2)
+
+    def draw_tile(self, r, c):
+        color = TILE_TO_COLOR[self.board[r, c]]
+        pygame.draw.rect(self.surface, color, pygame.Rect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE))
+        
+
+class ShipBoardDisplay:
+    def __init__(self, surface, board):
+        self.surface = surface
+        self.board = board
+
+    def draw(self):
+        for r in range(BOARD_SIZE):
+            for c in range(BOARD_SIZE):
+                self.draw_tile(r, c)
+        pygame.draw.rect(self.surface, (0, 0, 0), pygame.Rect(0, 0, BOARD_WIDTH, BOARD_HEIGHT), 2)
+
+    def draw_tile(self, r, c):
+        if self.board.ship_board[(r, c)] is None:
+            color = TILE_TO_COLOR[Tile.EMPTY]
+        else:
+            color = SHIP_COLOR
+
+        if self.board[r, c] == Tile.SUNK:
+            color = TILE_TO_COLOR[Tile.SUNK]
+        elif self.board[r, c] == Tile.HIT:
+            color = TILE_TO_COLOR[Tile.HIT]
+        elif self.board[r, c] == Tile.MISS:
+            color = TILE_TO_COLOR[Tile.MISS]
+
+        pygame.draw.rect(self.surface, color, pygame.Rect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE))
 
 
-class Game:
-    def __init__(self):
+class PredictionBoardDisplay:
+    def __init__(self, surface, board, shooter):
+        self.surface = surface
+        self.board = board
+        self.shooter = shooter
+
+    def draw(self):
+        predictions = self.shooter.predict_raw(self.board)
+        for r in range(BOARD_SIZE):
+            for c in range(BOARD_SIZE):
+                self.draw_tile(r, c, predictions[r, c])
+        pygame.draw.rect(self.surface, (0, 0, 0), pygame.Rect(0, 0, BOARD_WIDTH, BOARD_HEIGHT), 2)
+
+    def draw_tile(self, r, c, value):
+        target_color = (50, 93, 213)
+        diff = (255 - target_color[0], 255 - target_color[1], 255 - target_color[2])
+        value = min(1, max(0, 1 - value))
+        color = (target_color[0] + diff[0] * value, target_color[1] + diff[1] * value, target_color[2] + diff[2] * value)
+        pygame.draw.rect(self.surface, color, pygame.Rect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE))
+
+class Visualization:
+    def __init__(self, shooter):
         pygame.init()
-        self.width = 3 * MARGIN + 2 * TILE_SIZE * BOARD_SIZE
-        self.height = 2 * MARGIN + TILE_SIZE * BOARD_SIZE
+
+        self.shooter = shooter
+        self.board = Board(RandomPlacer().place_ships())
+
+        display_count = 3 if isinstance(shooter, PredictionShooter) else 2
+
+        self.width = BOARD_WIDTH * display_count + 2 * MARGIN + (display_count - 1) * MARGIN
+        self.height = BOARD_HEIGHT + 2 * MARGIN
+
         self.screen = pygame.display.set_mode((self.width, self.height))
 
-        self.ship_board = RandomPlacer().place_ships()
-        self.enemy_board = RandomPlacer().place_ships()
+        pygame.display.set_caption("Battleship")
 
-        self.hit_board = Board()
+        ship_board_rect = pygame.Rect(MARGIN, MARGIN, BOARD_WIDTH, BOARD_HEIGHT)
+        hit_board_rect = pygame.Rect(MARGIN + BOARD_WIDTH + MARGIN, MARGIN, BOARD_WIDTH, BOARD_HEIGHT)
+        prediction_board_rect = pygame.Rect(MARGIN + 2 * (BOARD_WIDTH + MARGIN), MARGIN, BOARD_WIDTH, BOARD_HEIGHT)
 
-        self.game_core = GameCore([self.ship_board, self.enemy_board])
-        self.game_core.add_observer(HitObserver(0, self.hit_board))
-        self.game_core.add_observer(HitObserver(1, self.ship_board))
+        ship_board_surface = self.screen.subsurface(ship_board_rect)
+        hit_board_surface = self.screen.subsurface(hit_board_rect)
 
-        self.player0 = RandomPlayer(self.game_core.get_controls(0))
-        self.player1 = RandomPlayer(self.game_core.get_controls(1))
+        self.displays = [ShipBoardDisplay(ship_board_surface, self.board), HitBoardDisplay(hit_board_surface, self.board)]
 
-        self.game_core.add_observer(Player(self.player0))
-        self.game_core.add_observer(Player(self.player1))
-
-        self.players = [self.player0, self.player1]
-        self.current_player = 0
+        if isinstance(shooter, PredictionShooter):
+            prediction_board_surface = self.screen.subsurface(prediction_board_rect)
+            self.displays.append(PredictionBoardDisplay(prediction_board_surface, self.board, self.shooter))
 
     def run(self):
-        running = True
-        while running:
+        while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    running = False
+                    pygame.quit()
+                    return
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                    self.board.shoot(self.shooter.shoot(self.board))
 
-            if not self.game_core.finished:
-                self.players[self.current_player].shoot()
-                self.current_player = 1 - self.current_player
-
-            self.screen.fill((20, 20, 20))
-            self.draw_board(self.ship_board, (MARGIN, MARGIN))
-            self.draw_board(self.hit_board, (2 * MARGIN +
-                            TILE_SIZE * BOARD_SIZE, MARGIN))
-
+            self.draw()
             pygame.display.update()
-            pygame.time.wait(10)
-
-        pygame.quit()
-
-    def draw_board(self, board, pos):
-        for i in range(BOARD_SIZE):
-            for j in range(BOARD_SIZE):
-                x = pos[0] + i * TILE_SIZE
-                y = pos[1] + j * TILE_SIZE
-                tile = board[i, j]
-                color = TILE_COLORS[tile]
-                pygame.draw.rect(self.screen, color, pygame.Rect(
-                    x, y, TILE_SIZE, TILE_SIZE))
 
 
-p1 = random_player.RandomPlayer()
-p2 = random_player.RandomPlayer()
+    def draw(self):
+        self.screen.fill((255, 255, 255))
+        for display in self.displays:
+            display.draw()
 
-game_lengths = compare_placer_with_shooter(p1, p2, 100)
-# plt.hist(game_lengths)
-# plt.show()
-average = sum(game_lengths) / len(game_lengths)
-print(average)
+
+shooter = MonteCarloShooter(200)
+visualization = Visualization(shooter)
+visualization.run()

@@ -11,53 +11,25 @@ from random_player import *
 from hybrid_player import *
 from stats import *
 
-class TFShooter(Shooter):
+class NeuralNetworkPredictor(ShipPredictor):
+    '''
+    Predicts ship placement using a neural network.
+    '''
     def __init__(self, model):
         self.model = model
-    
-    def shoot_many(self, boards):
+
+    def predict_ships(self, board):
+        x, _ = board_to_sample(board)
+        return np.array(self.model(np.array([x]), training=False)[0])
+
+    def predict_ships_many(self, boards):
         xs = np.array([board_to_sample(board)[0] for board in boards])
         ys = np.array(self.model(xs, training=False))
-        positions = []
-        for board, y in zip(boards, ys):
-            pos = self.select_best_pos(board, y)
-            positions.append(pos)
-        return positions
-    
-    def shoot(self, board):
-        return self.shoot_many([board])[0]
-    
-    def select_best_pos(self, board, predictions):
-        tried = 0
-        while tried < BOARD_SIZE * BOARD_SIZE:
-            pos = np.unravel_index(np.argmax(predictions), predictions.shape)
-            if board[pos] == Tile.EMPTY:
-                return pos
-            predictions[pos] = -1
-            tried += 1
+        return ys
 
-
-
-def plot_predictions(shooter):
-    board = Board(RandomPlacer().place_ships())
-    while board.count_ship_tiles() > 0:
-        fig, ax = plt.subplots(1, 3)
-        x, y = board_to_sample(board)
-
-        xx = np.zeros((BOARD_SIZE, BOARD_SIZE))
-        for row in range(BOARD_SIZE):
-            for col in range(BOARD_SIZE):
-                xx[row, col] = np.argmax(x[row, col])
-
-
-        ax[0].matshow(xx, vmin=0, vmax=3)
-        ax[1].matshow(y, vmin=0, vmax=1)
-
-        ax[2].matshow(shooter.model.predict(np.array([x]), verbose=0)[0])
-        plt.show()
-        board.shoot(shooter.shoot(board))
-
-
+class NeuralNetworkShooter(PredictionShooter):
+    def __init__(self, model):
+        super().__init__(NeuralNetworkPredictor(model))
 
 def fit_model(model, shooter, games, epochs):
     xs, ys = make_dataset(RandomPlacer(), shooter, games)
@@ -65,7 +37,7 @@ def fit_model(model, shooter, games, epochs):
     size = len(list(dataset))
     train, val = dataset.take(int(0.8 * size)), dataset.skip(int(0.8 * size))
     history = model.fit(train.batch(64), epochs=epochs, validation_data=val.batch(64))
-    return history, TFShooter(model)
+    return history, PredictionShooter(NeuralNetworkPredictor(model))
 
 def make_perceptron_model():
     perceptron_model = models.Sequential([
@@ -101,38 +73,3 @@ def make_cnn_model():
     cnn_model.compile(optimizer='rmsprop', loss='binary_crossentropy')
 
     return cnn_model
-
-
-#perceptron_shooter = iterate_fitting(make_perceptron_model, RandomPlayer(), games=10000, epochs=100, iterations=1)
-#history, dense_shooter = fit_model(make_dense_model(), RandomPlayer(), games=10000, epochs=50)
-#history, dense_shooter = fit_model(dense_shooter.model, dense_shooter, games=10000, epochs=50)
-history, cnn_shooter = fit_model(make_cnn_model(), RandomShooter(), games=40000, epochs=100)
-hybrid_shooter = HybridShooter(cnn_shooter)
-
-players = [
-    #(RandomPlayer(), "Random"),
-    #(perceptron_shooter, "Perceptron"),
-    #(dense_shooter, "Dense"),
-    (cnn_shooter, "CNN"),
-    (hybrid_shooter, "Hybrid"),
-]
-
-#plot_predictions(cnn_shooter)
-
-game_lengths =[]
-GAMES = 200
-for player, name in players:
-    player_lengths = compare_placer_with_shooter(RandomPlacer(), player, matches=GAMES)
-    game_lengths.append(player_lengths)
-    print(name, ":", np.mean(player_lengths), "±", np.std(player_lengths))
-
-'''
-fig, ax = plt.subplots(1, len(players))
-if len(players) == 1:
-    ax = [ax]
-
-for i, (player, name) in enumerate(players):
-    ax[i].hist(game_lengths[i], bins=range(1, 100))
-    ax[i].set_title(name)
-plt.show()
-'''
