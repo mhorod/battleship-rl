@@ -31,13 +31,16 @@ class NeuralNetworkShooter(PredictionShooter):
     def __init__(self, model):
         super().__init__(NeuralNetworkPredictor(model))
 
-def fit_model(model, shooter, games, epochs):
-    xs, ys = make_dataset(RandomPlacer(), shooter, games)
-    dataset = tf.data.Dataset.from_tensor_slices((xs, ys))
+def fit_model(model, dataset, epochs, filename=None):
     size = len(list(dataset))
     train, val = dataset.take(int(0.8 * size)), dataset.skip(int(0.8 * size))
     history = model.fit(train.batch(64), epochs=epochs, validation_data=val.batch(64))
-    return history, PredictionShooter(NeuralNetworkPredictor(model))
+    if filename is not None:
+        model.save(filename)
+    return history, NeuralNetworkShooter(model)
+
+def load_model(filename):
+    return NeuralNetworkShooter(tf.keras.models.load_model(filename))
 
 def make_perceptron_model():
     perceptron_model = models.Sequential([

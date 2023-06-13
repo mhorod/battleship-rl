@@ -229,8 +229,7 @@ class Visualization:
 
 
 
-shooter = MonteCarloShooter(1000)
-#shooter = fit_model(make_dense_model(), RandomShooter(), 10000, 10, "dense.model")[1]
-#shooter = load_model("dense.model")
-visualization = Visualization(shooter, "Monte Carlo Simulation")
+#shooter = MonteCarloShooter(1000)
+shooter = load_model("models/cnn.model")
+visualization = Visualization(shooter, "CNN")
 visualization.run()
