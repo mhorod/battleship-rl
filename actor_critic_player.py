@@ -12,10 +12,10 @@ from tf_player import *
 class ActorCriticModel:
     def __init__(self, actor, critic, discount_factor=0.9):
         self.actor = actor
-        self.actor_optimizer = tf.optimizers.Adam()
+        self.actor_optimizer = tf.optimizers.Adam(5e-4)
 
         self.critic = critic
-        self.critic_optimizer = tf.optimizers.Adam()
+        self.critic_optimizer = tf.optimizers.Adam(5e-4)
 
         self.discount_factor = discount_factor
 
@@ -27,7 +27,7 @@ class ActorCriticModel:
         weights = []
         for r in range(BOARD_SIZE):
             for c in range(BOARD_SIZE):
-                if board[r, c] == Tile.EMPTY:
+                if board[r, c] == Tile.EMPTY and probabilities[r, c] > 0:
                     choices.append((r, c))
                     weights.append(probabilities[r, c])
         weights = np.array(weights)
@@ -71,27 +71,23 @@ class ActorCriticShooter(NeuralNetworkShooter):
 def make_actor_critic_model():
     actor = models.Sequential([
         layers.Flatten(input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
-        layers.Dense(128, activation='relu'),
+        #layers.Dense(128, activation='relu'),
         layers.Dense(BOARD_SIZE * BOARD_SIZE, activation='softmax'),
         layers.Reshape((BOARD_SIZE, BOARD_SIZE))
     ])
 
-    actor.compile(optimizer='adam', loss='mse')
-
     critic = models.Sequential([
         layers.Flatten(input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
-        layers.Dense(128, activation='relu'),
+        #layers.Dense(128, activation='relu'),
         layers.Dense(1, activation='linear'),
     ])
-
-    critic.compile(optimizer='adam', loss='mse')
 
     return ActorCriticModel(actor, critic)
 
 
-def play_one_game(model: ActorCriticModel, placer):
-    board = Board(placer.place_ships())
+def play_one_game(model: ActorCriticModel, board):
     moves = 0
+    initial_ship_tiles = board.count_ship_tiles()
     while board.count_ship_tiles() > 0:
         moves += 1
         preshot_board = board.clone()
@@ -99,7 +95,7 @@ def play_one_game(model: ActorCriticModel, placer):
         result = board.shoot(shot)
         reward = 0
         if result != ShotResult.MISS:
-            reward = 1
+            reward = 100 / moves
         done = board.count_ship_tiles() == 0
         model.learn(preshot_board, shot, reward, board, done)
 
@@ -110,8 +106,13 @@ def play_one_game(model: ActorCriticModel, placer):
 model = make_actor_critic_model()
 placer = RandomPlacer()
 lengths = []
-for _ in range(1000):
-    lengths.append(play_one_game(model, placer))
+for i in range(1000):
+    print(i)
+    board = Board(placer.place_ships())
+    try:
+        lengths.append(play_one_game(model, board.clone()))
+    except:
+        pass
 
 print(np.mean(lengths))
 plt.hist(lengths)

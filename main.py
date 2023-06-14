@@ -254,6 +254,8 @@ class Visualization:
 
 monte_carlo_shooter = MonteCarloShooter(1000)
 perceptron_shooter = load_model("models/perceptron.model")
+cnn_shooter = load_model("models/cnn.model")
 #hybrid_shooter = HybridShooter(monte_carlo_shooter)
-visualization = Visualization(perceptron_shooter, "Perceptron")
+human_shooter = HumanLikeShooter()
+visualization = Visualization(human_shooter, "Human")
 visualization.run()

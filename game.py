@@ -51,6 +51,9 @@ class Ship:
             return ShotResult.SUNK if np.all(self.hits) else ShotResult.HIT
         return ShotResult.MISS
 
+    def clone(self):
+        return Ship(self.pos, self.length, self.orientation)
+
     def get_tiles(self):
         if self.orientation == Orientation.HORIZONTAL:
             return [(self.pos[0] + i, self.pos[1]) for i in range(self.length)]
@@ -61,6 +64,20 @@ class Ship:
 class ShipBoard:
     def __init__(self):
         self.ships = [[None] * BOARD_SIZE for _ in range(BOARD_SIZE)]
+
+    def clone(self):
+        result = ShipBoard()
+        ships = {}
+        for i in range(BOARD_SIZE):
+            for j in range(BOARD_SIZE):
+                if self.ships[i][j] not in ships and self.ships[i][j] is not None:
+                    ships[self.ships[i][j]] = self.ships[i][j].clone()
+
+        for i in range(BOARD_SIZE):
+            for j in range(BOARD_SIZE):
+                if self.ships[i][j] is not None:
+                    result.ships[i][j] = ships[self.ships[i][j]]
+        return result
 
     def get_repr(self):
         result = np.zeros((BOARD_SIZE, BOARD_SIZE), dtype=np.int)
@@ -158,7 +175,7 @@ class Board:
         return self.hash() == other.hash() and np.all(self.repr == other.repr)
 
     def clone(self):
-        new_board = Board(self.ship_board)
+        new_board = Board(self.ship_board.clone())
         new_board.repr = np.copy(self.repr)
         return new_board
 
