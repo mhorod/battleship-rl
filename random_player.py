@@ -1,8 +1,9 @@
 import random
 
+import matplotlib.pyplot as plt
+
 from player import *
 from game import *
-
 
 
 class RandomPlacer(Placer):
@@ -18,7 +19,8 @@ class RandomPlacer(Placer):
         if not ships:
             return True
 
-        positions = [(i, j) for i in range(BOARD_SIZE) for j in range(BOARD_SIZE)]
+        positions = [(i, j) for i in range(BOARD_SIZE)
+                     for j in range(BOARD_SIZE)]
         random.shuffle(positions)
         for pos in positions:
             possible_ships = [ship for ship in [
@@ -41,10 +43,12 @@ class RandomPlacer(Placer):
 
 class RandomShooter(Shooter):
     def shoot(self, board) -> tuple:
-        while(True):
-            pos = (random.randint(0, BOARD_SIZE - 1), random.randint(0, BOARD_SIZE - 1))
+        while (True):
+            pos = (random.randint(0, BOARD_SIZE - 1),
+                   random.randint(0, BOARD_SIZE - 1))
             if board[pos] == Tile.EMPTY:
                 return pos
+
 
 class RandomPlayer(RandomPlacer, RandomShooter):
     pass

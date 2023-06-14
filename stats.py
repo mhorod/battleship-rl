@@ -6,6 +6,7 @@ from dataset import *
 from random_player import *
 from prediction_shooter import *
 
+
 def compare_placer_with_shooter(placer: Placer, shooter: Shooter, matches: int = 100) -> list:
     game_lengths = []
     boards = [Board(placer.place_ships()) for _ in range(matches)]
@@ -22,7 +23,7 @@ def compare_placer_with_shooter(placer: Placer, shooter: Shooter, matches: int =
                 ship_counts[i] -= 1
                 if ship_counts[i] == 0:
                     indices_to_remove.append(i)
-        
+
         for i in indices_to_remove[::-1]:
             game_lengths.append(game_length)
             boards.pop(i)
@@ -41,7 +42,6 @@ def plot_predictions(shooter: PredictionShooter):
         for row in range(BOARD_SIZE):
             for col in range(BOARD_SIZE):
                 xx[row, col] = np.argmax(x[row, col])
-
 
         ax[0].matshow(xx, vmin=0, vmax=3)
         ax[1].matshow(y, vmin=0, vmax=1)

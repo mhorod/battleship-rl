@@ -17,21 +17,25 @@ SHIPS = {
 
 BOARD_SIZE = 10
 
+
 class Tile(IntEnum):
     EMPTY = 0
     MISS = 1
     HIT = 2
     SUNK = 3
 
+
 class Orientation(IntEnum):
     HORIZONTAL = 0
     VERTICAL = 1
+
 
 class ShotResult(Enum):
     MISS = auto()
     HIT = auto()
     SUNK = auto()
     ILLEGAL = auto()
+
 
 class Ship:
     def __init__(self, pos, length, orientation):
@@ -49,9 +53,9 @@ class Ship:
 
     def get_tiles(self):
         if self.orientation == Orientation.HORIZONTAL:
-                return [(self.pos[0] + i, self.pos[1]) for i in range(self.length)]
+            return [(self.pos[0] + i, self.pos[1]) for i in range(self.length)]
         elif self.orientation == Orientation.VERTICAL:
-                return [(self.pos[0], self.pos[1] + i) for i in range(self.length)]
+            return [(self.pos[0], self.pos[1] + i) for i in range(self.length)]
 
 
 class ShipBoard:
@@ -69,11 +73,11 @@ class ShipBoard:
     def place_ship(self, ship):
         for (x, y) in ship.get_tiles():
             self.ships[x][y] = ship
-    
+
     def remove_ship(self, ship):
         for (x, y) in ship.get_tiles():
             self.ships[x][y] = None
-    
+
     def get_ship(self, pos):
         return self.ships[pos[0]][pos[1]]
 
@@ -118,23 +122,25 @@ class ShipBoard:
     def __getitem__(self, pos):
         return self.ships[pos[0]][pos[1]]
 
+
 class Board:
     def __init__(self, ship_board):
         self.ship_board = ship_board
         self.repr = np.zeros((BOARD_SIZE, BOARD_SIZE, len(Tile)), dtype=np.int)
         self.repr[:, :, Tile.EMPTY] = 1
+        self.ship_tiles = ship_board.count_ship_tiles()
 
     def get_repr(self):
         return self.repr
 
     def get_ship_repr(self):
         return self.ship_board.get_repr()
-        
+
     def __getitem__(self, pos):
         if pos[0] < 0 or pos[0] >= BOARD_SIZE or pos[1] < 0 or pos[1] >= BOARD_SIZE:
             return None
         return Tile(np.argmax(self.repr[pos[0], pos[1]]))
-    
+
     def __setitem__(self, pos, tile):
         self.repr[pos[0], pos[1], :] = 0
         self.repr[pos[0], pos[1], tile] = 1
@@ -143,7 +149,7 @@ class Board:
         return np.sum(self.repr[:, :, tile])
 
     def count_ship_tiles(self):
-        return self.ship_board.count_ship_tiles()
+        return self.ship_tiles
 
     def hash(self):
         return hash(self.repr.tobytes())
@@ -152,19 +158,22 @@ class Board:
         return self.hash() == other.hash() and np.all(self.repr == other.repr)
 
     def clone(self):
-        new_board =  Board(self.ship_board)
+        new_board = Board(self.ship_board)
         new_board.repr = np.copy(self.repr)
         return new_board
 
     def shoot(self, pos):
         if self[pos] != Tile.EMPTY:
-            return ShotResult.ILLEGAL 
+            return ShotResult.ILLEGAL
         result = self.ship_board.shoot(pos)
         if result == ShotResult.MISS:
-           self[pos] = Tile.MISS
+            self[pos] = Tile.MISS
         elif result == ShotResult.HIT:
+            self.ship_tiles -= 1
             self[pos] = Tile.HIT
         elif result == ShotResult.SUNK:
+            self.ship_tiles -= 1
             for ship_tile in self.ship_board.get_ship(pos).get_tiles():
                 self[ship_tile] = Tile.SUNK
+
         return result
