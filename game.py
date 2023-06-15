@@ -90,13 +90,13 @@ class ShipBoard:
         self.ships = {pos : None for pos in board_positions(self.config)}
 
     def clone(self):
-        result = ShipBoard()
+        result = ShipBoard(self.config)
         ships = {}
         for pos in board_positions(self.config):
             if self.ships[pos] not in ships and self.ships[pos] is not None:
                 ships[self.ships[pos]] = self.ships[pos].clone()
 
-        for i, j in board_positions(self.config):
+        for pos in board_positions(self.config):
             if self.ships[pos] is not None:
                 result.ships[pos] = ships[self.ships[pos]]
         return result
