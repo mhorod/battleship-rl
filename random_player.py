@@ -7,11 +7,14 @@ from game import *
 
 
 class RandomPlacer(Placer):
+    def __init__(self, board_config):
+        self.board_config = board_config
+
     def place_ships(self) -> ShipBoard:
-        board = ShipBoard()
+        board = ShipBoard(self.board_config)
         ships_to_place = []
-        for ship, count in SHIPS.items():
-            ships_to_place += [ship] * count
+        for ship in self.board_config.ships:
+            ships_to_place.extend([ship.length] * ship.count)
         self.place_ships_with_backtracking(board, ships_to_place)
         return board
 
@@ -19,8 +22,7 @@ class RandomPlacer(Placer):
         if not ships:
             return True
 
-        positions = [(i, j) for i in range(BOARD_SIZE)
-                     for j in range(BOARD_SIZE)]
+        positions = list(board_positions(self.board_config))
         random.shuffle(positions)
         for pos in positions:
             possible_ships = [ship for ship in [
@@ -44,11 +46,12 @@ class RandomPlacer(Placer):
 class RandomShooter(Shooter):
     def shoot(self, board) -> tuple:
         while (True):
-            pos = (random.randint(0, BOARD_SIZE - 1),
-                   random.randint(0, BOARD_SIZE - 1))
+            pos = (random.randint(0, board.config.size - 1),
+                   random.randint(0, board.config.size - 1))
             if board[pos] == Tile.EMPTY:
                 return pos
 
 
 class RandomPlayer(RandomPlacer, RandomShooter):
-    pass
+    def __init__(self, board_config):
+        super().__init__(board_config)

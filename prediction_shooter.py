@@ -18,12 +18,13 @@ class PredictionShooter(Shooter):
 
     def predict_masked(self, board) -> np.ndarray:
         likelihoods = self.predict_raw(board)
-        for r in range(BOARD_SIZE):
-            for c in range(BOARD_SIZE):
-                if board[r, c] != Tile.EMPTY:
-                    likelihoods[r, c] = 0
+        for pos in board_positions(board.config):
+            if board[pos] != Tile.EMPTY:
+                likelihoods[pos] = 0
         return likelihoods
 
     def select_best_pos(self, board) -> tuple:
         likelihoods = self.predict_masked(board)
-        return np.unravel_index(np.argmax(likelihoods), likelihoods.shape)
+        max = np.max(likelihoods)
+        indices = np.argwhere(likelihoods == max)
+        return tuple(indices[np.random.choice(len(indices))])

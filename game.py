@@ -1,22 +1,39 @@
 from enum import IntEnum, Enum, auto
+from typing import List
+from dataclasses import dataclass
 import numpy as np
 
-CARRIER = 5
-BATTLESHIP = 4
-CRUISER = 3
-DESTROYER = 2
-SUBMARINE = 1
+@dataclass
+class ShipConfig:
+    length: int
+    count: int
 
-SHIPS = {
-    CARRIER: 1,
-    BATTLESHIP: 1,
-    CRUISER: 2,
-    DESTROYER: 1,
-    SUBMARINE: 0,
-}
+@dataclass
+class BoardConfig:
+    size: int
+    ships: List[ShipConfig]
+    
+    @property
+    def dimensions(self):
+        return (self.size, self.size)
 
-BOARD_SIZE = 10
+DEFAULT_BOARD_CONFIG = BoardConfig(
+    10,
+    [
+        ShipConfig(length=5, count=1),
+        ShipConfig(length=4, count=1),
+        ShipConfig(length=3, count=2),
+        ShipConfig(length=2, count=1),
+    ]
+)
 
+TINY_BOARD_CONFIG = BoardConfig(
+    5,
+    [
+        ShipConfig(length=3, count=1),
+        ShipConfig(length=2, count=1),
+    ]
+)
 
 class Tile(IntEnum):
     EMPTY = 0
@@ -61,89 +78,88 @@ class Ship:
             return [(self.pos[0], self.pos[1] + i) for i in range(self.length)]
 
 
+def board_positions(config):
+    rows, columns = config.dimensions
+    for r in range(rows):
+        for c in range(columns):
+            yield (r, c)
+
 class ShipBoard:
-    def __init__(self):
-        self.ships = [[None] * BOARD_SIZE for _ in range(BOARD_SIZE)]
+    def __init__(self, config):
+        self.config = config
+        self.ships = {pos : None for pos in board_positions(self.config)}
 
     def clone(self):
         result = ShipBoard()
         ships = {}
-        for i in range(BOARD_SIZE):
-            for j in range(BOARD_SIZE):
-                if self.ships[i][j] not in ships and self.ships[i][j] is not None:
-                    ships[self.ships[i][j]] = self.ships[i][j].clone()
+        for pos in board_positions(self.config):
+            if self.ships[pos] not in ships and self.ships[pos] is not None:
+                ships[self.ships[pos]] = self.ships[pos].clone()
 
-        for i in range(BOARD_SIZE):
-            for j in range(BOARD_SIZE):
-                if self.ships[i][j] is not None:
-                    result.ships[i][j] = ships[self.ships[i][j]]
+        for i, j in board_positions(self.config):
+            if self.ships[pos] is not None:
+                result.ships[pos] = ships[self.ships[pos]]
         return result
 
     def get_repr(self):
-        result = np.zeros((BOARD_SIZE, BOARD_SIZE), dtype=np.int)
-        for x in range(BOARD_SIZE):
-            for y in range(BOARD_SIZE):
-                if self.ships[x][y] is not None:
-                    result[x][y] = 1
+        result = np.zeros(self.config.dimensions, dtype=np.int)
+        for pos in board_positions(self.config):
+            if self.ships[pos] is not None:
+                result[pos] = 1
         return result
 
     def place_ship(self, ship):
-        for (x, y) in ship.get_tiles():
-            self.ships[x][y] = ship
+        for pos in ship.get_tiles():
+            self.ships[pos] = ship
 
     def remove_ship(self, ship):
-        for (x, y) in ship.get_tiles():
-            self.ships[x][y] = None
+        for pos in ship.get_tiles():
+            self.ships[pos] = None
 
     def get_ship(self, pos):
-        return self.ships[pos[0]][pos[1]]
+        return self.ships[pos]
 
     def count_ship_tiles(self):
-        result = 0
-        for x in range(BOARD_SIZE):
-            for y in range(BOARD_SIZE):
-                if self.ships[x][y] is not None:
-                    result += 1
-        return result
+        return sum(1 for pos in board_positions(self.config) if self.ships[pos] is not None)
 
     def can_place_ship(self, ship):
         for (x, y) in ship.get_tiles():
-            if x < 0 or x >= BOARD_SIZE or y < 0 or y >= BOARD_SIZE:
+            if x < 0 or x >= self.config.size or y < 0 or y >= self.config.size:
                 return False
-            if self.ships[x][y] is not None:
+            if self.ships[x, y] is not None:
                 return False
-            if x > 0 and self.ships[x - 1][y] is not None:
+            if x > 0 and self.ships[x - 1, y] is not None:
                 return False
-            if y > 0 and self.ships[x][y - 1] is not None:
+            if y > 0 and self.ships[x, y - 1] is not None:
                 return False
-            if x < BOARD_SIZE - 1 and self.ships[x + 1][y] is not None:
+            if x < self.config.size - 1 and self.ships[x + 1, y] is not None:
                 return False
-            if y < BOARD_SIZE - 1 and self.ships[x][y + 1] is not None:
+            if y < self.config.size - 1 and self.ships[x, y + 1] is not None:
                 return False
         return True
 
     def shoot(self, pos):
-        if self.ships[pos[0]][pos[1]] is None:
+        if self.ships[pos] is None:
             return ShotResult.MISS
-        return self.ships[pos[0]][pos[1]].shoot(pos)
+        return self.ships[pos].shoot(pos)
 
     def sunken_ships(self):
         sunken = set()
-        for r in range(BOARD_SIZE):
-            for c in range(BOARD_SIZE):
-                ship = self.ships[r][c]
-                if ship is not None and np.all(ship.hits):
-                    sunken.add(ship)
+        for pos in board_positions(self.config.size):
+            ship = self.ships[pos]
+            if ship is not None and np.all(ship.hits):
+                sunken.add(ship)
         return [ship.length for ship in sunken]
 
     def __getitem__(self, pos):
-        return self.ships[pos[0]][pos[1]]
+        return self.ships[pos]
 
 
 class Board:
     def __init__(self, ship_board):
         self.ship_board = ship_board
-        self.repr = np.zeros((BOARD_SIZE, BOARD_SIZE, len(Tile)), dtype=np.int)
+        self.config = ship_board.config
+        self.repr = np.zeros((self.config.size, self.config.size, len(Tile)), dtype=np.int)
         self.repr[:, :, Tile.EMPTY] = 1
         self.ship_tiles = ship_board.count_ship_tiles()
 
@@ -154,7 +170,7 @@ class Board:
         return self.ship_board.get_repr()
 
     def __getitem__(self, pos):
-        if pos[0] < 0 or pos[0] >= BOARD_SIZE or pos[1] < 0 or pos[1] >= BOARD_SIZE:
+        if pos[0] < 0 or pos[0] >= self.config.size or pos[1] < 0 or pos[1] >= self.config.size:
             return None
         return Tile(np.argmax(self.repr[pos[0], pos[1]]))
 

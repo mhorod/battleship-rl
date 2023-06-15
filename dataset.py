@@ -7,7 +7,9 @@ def make_dataset(placer, shooter, games):
     ys = []
     boards = [Board(placer.place_ships()) for _ in range(games)]
     ship_counts = [board.count_ship_tiles() for board in boards]
-    moments_to_extract = [random.randint(10, BOARD_SIZE * BOARD_SIZE - 10) for _ in range(games)]
+    tiles = boards[0].config.size * boards[0].config.size
+    min_moment = min(ship_counts) - 1
+    moments_to_extract = [random.randint(min_moment, tiles) for _ in range(games)]
     game_length = 0
 
     while len(boards) > 0:
@@ -51,8 +53,7 @@ def make_dataset(placer, shooter, games):
 def board_to_sample(board):
     x = board.get_repr()
     y = board.get_ship_repr()
-    for row in range(BOARD_SIZE):
-        for col in range(BOARD_SIZE):
-            if board[row, col] != Tile.EMPTY:
-                y[row, col] = 0
+    for pos in board_positions(board.config):
+        if board[pos] != Tile.EMPTY:
+            y[pos] = 0
     return x, y

@@ -8,8 +8,7 @@ import numpy as np
 from dataset import *
 from player import *
 from random_player import *
-from hybrid_player import *
-from stats import *
+from prediction_shooter import *
 
 class NeuralNetworkPredictor(ShipPredictor):
     '''
@@ -34,7 +33,7 @@ class NeuralNetworkShooter(PredictionShooter):
 def fit_model(model, dataset, epochs, filename=None):
     size = len(list(dataset))
     train, val = dataset.take(int(0.8 * size)), dataset.skip(int(0.8 * size))
-    history = model.fit(train.batch(64), epochs=epochs, validation_data=val.batch(64))
+    history = model.fit(train.batch(64), epochs=epochs, validation_data=val.batch(64), )
     if filename is not None:
         model.save(filename)
     return history, NeuralNetworkShooter(model)
@@ -42,7 +41,8 @@ def fit_model(model, dataset, epochs, filename=None):
 def load_model(filename):
     return NeuralNetworkShooter(tf.keras.models.load_model(filename))
 
-def make_perceptron_model():
+def make_perceptron_model(board_config):
+    BOARD_SIZE = board_config.size
     perceptron_model = models.Sequential([
         layers.Flatten(input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
         layers.Dense(BOARD_SIZE * BOARD_SIZE, activation='sigmoid'),
@@ -52,7 +52,8 @@ def make_perceptron_model():
     perceptron_model.compile(optimizer='adam',loss='binary_crossentropy')
     return perceptron_model
 
-def make_dense_model():
+def make_dense_model(board_config):
+    BOARD_SIZE = board_config.size
     perceptron_model = models.Sequential([
         layers.Flatten(input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
         layers.Dense(128, activation='relu'),
@@ -64,15 +65,16 @@ def make_dense_model():
 
     return perceptron_model
 
-def make_cnn_model():
+def make_cnn_model(board_config):
+    BOARD_SIZE = board_config.size
     cnn_model = models.Sequential([
-        layers.Conv2D(64, (3, 3), activation='relu', input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
-        layers.MaxPooling2D((2, 2)),
+        layers.Conv2D(32, 3, activation='relu', input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
         layers.Flatten(),
         layers.Dense(BOARD_SIZE * BOARD_SIZE, activation='sigmoid'),
         layers.Reshape((BOARD_SIZE, BOARD_SIZE))
     ])
 
-    cnn_model.compile(optimizer='rmsprop', loss='binary_crossentropy')
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
+    cnn_model.compile(optimizer, loss='binary_crossentropy')
 
     return cnn_model
