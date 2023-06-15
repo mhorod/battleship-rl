@@ -47,7 +47,7 @@ class ActorCriticModel:
 
             actor_loss = self.actor_loss(
                 probabilities, shot, temporal_difference)
-            critic_loss = actor_loss ** 2
+            critic_loss = temporal_difference ** 2
 
         grads1 = tape1.gradient(actor_loss, self.actor.trainable_variables)
         grads2 = tape2.gradient(critic_loss, self.critic.trainable_variables)
@@ -78,7 +78,8 @@ def make_actor_critic_model():
 
     critic = models.Sequential([
         layers.Flatten(input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
-        #layers.Dense(128, activation='relu'),
+        layers.Dense(64, activation='relu'),
+        layers.Dense(64, activation='relu'),
         layers.Dense(1, activation='linear'),
     ])
 
@@ -88,32 +89,44 @@ def make_actor_critic_model():
 def play_one_game(model: ActorCriticModel, board):
     moves = 0
     initial_ship_tiles = board.count_ship_tiles()
+    game_history = []
     while board.count_ship_tiles() > 0:
         moves += 1
         preshot_board = board.clone()
         shot = model.act(board)
         result = board.shoot(shot)
         reward = 0
-        if result != ShotResult.MISS:
-            reward = 100 / moves
-        done = board.count_ship_tiles() == 0
-        model.learn(preshot_board, shot, reward, board, done)
+        done = False
+        if board.count_ship_tiles() == 0:
+            reward = 1 - (moves - initial_ship_tiles) / (BOARD_SIZE * BOARD_SIZE - initial_ship_tiles)
+            done = True
+        game_history.append((preshot_board, shot, board.clone(), reward, done))
+        
+    for _ in range(3):
+        for preshot_board, shot, board, reward, done in game_history:
+            model.learn(preshot_board, shot, reward, board, done)
+
+        
 
     print("moves: ", moves)
+    print("reward: ", reward)
     return moves
 
 
 model = make_actor_critic_model()
 placer = RandomPlacer()
+boards = [Board(placer.place_ships()) for _ in range(100)]
 lengths = []
-for i in range(1000):
+for i in range(10000):
     print(i)
-    board = Board(placer.place_ships())
+    board = random.choice(boards)
     try:
         lengths.append(play_one_game(model, board.clone()))
     except:
         pass
 
 print(np.mean(lengths))
+plt.plot(lengths)
+plt.show()
 plt.hist(lengths)
 plt.show()
