@@ -19,7 +19,7 @@ class MonteCarloPredictor(ShipPredictor):
         self.simulations = simulations
 
     def predict_ships(self, board):
-        values = np.zeros((BOARD_SIZE, BOARD_SIZE))
+        values = np.zeros(board.config.dimensions)
         for _ in range(self.simulations):
             values += self.simulate(board)
         return values / self.simulations
@@ -27,12 +27,11 @@ class MonteCarloPredictor(ShipPredictor):
     def simulate(self, board):
         avoid = set()
         good = []
-        for r in range(BOARD_SIZE):
-            for c in range(BOARD_SIZE):
-                if board[r, c] in (Tile.SUNK, Tile.MISS):
-                    avoid.add((r, c))
-                else:
-                    good.append((r, c))
+        for pos in board_positions(board.config):
+            if board[pos] in (Tile.SUNK, Tile.MISS):
+                avoid.add(pos)
+            else:
+                good.append(pos)
         random.shuffle(good)
 
         ship_lengths = self.missing_ships(board)
@@ -42,8 +41,8 @@ class MonteCarloPredictor(ShipPredictor):
 
     def missing_ships(self, board):
         ship_lengths = []
-        for ship in SHIPS:
-            ship_lengths += [ship] * SHIPS[ship]
+        for ship in board.config.ships:
+            ship_lengths += [ship.length] * ship.count
         for sunken in board.ship_board.sunken_ships():
             ship_lengths.remove(sunken)
         return ship_lengths
@@ -53,10 +52,10 @@ class MonteCarloPredictor(ShipPredictor):
         for pos in good:
             for ship_length in ship_lengths:
                 if self.can_place_ship(board, avoid, pos, ship_length, Orientation.HORIZONTAL):
-                    return self.place_ship(board, avoid, pos, ship_length, Orientation.HORIZONTAL)
+                    return self.place_ship(board, pos, ship_length, Orientation.HORIZONTAL)
                 elif self.can_place_ship(board, avoid, pos, ship_length, Orientation.VERTICAL):
-                    return self.place_ship(board, avoid, pos, ship_length, Orientation.VERTICAL)
-        return np.zeros((BOARD_SIZE, BOARD_SIZE))
+                    return self.place_ship(board, pos, ship_length, Orientation.VERTICAL)
+        return np.zeros(board.config.dimensions)
     
     def can_place_ship(self, board, avoid, pos, length, orientation):
         if orientation == Orientation.HORIZONTAL:
@@ -86,8 +85,8 @@ class MonteCarloPredictor(ShipPredictor):
 
         return True
 
-    def place_ship(self, board, avoid, pos, length, orientation):
-        values = np.zeros((BOARD_SIZE, BOARD_SIZE))
+    def place_ship(self, board, pos, length, orientation):
+        values = np.zeros(board.config.dimensions)
         positions = []
         if orientation == Orientation.HORIZONTAL:
             for i in range(length):

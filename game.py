@@ -17,6 +17,10 @@ class BoardConfig:
     def dimensions(self):
         return (self.size, self.size)
 
+    @property
+    def tiles(self):
+        return self.size * self.size
+
 DEFAULT_BOARD_CONFIG = BoardConfig(
     10,
     [

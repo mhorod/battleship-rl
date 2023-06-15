@@ -1,13 +1,9 @@
 import tensorflow as tf
 from tensorflow.keras import datasets, layers, models
 
-import matplotlib.pyplot as plt
-
 from dataset import *
 from player import *
-from random_player import *
-from tf_player import *
-from hunter_player import *
+from tf_player import NeuralNetworkShooter
 
 class ActorCriticModel:
     def __init__(self, actor, critic):
@@ -17,11 +13,7 @@ class ActorCriticModel:
         self.critic = critic
         self.critic_optimizer = tf.optimizers.Adam(5e-3)
 
-        self.hunter = EvenHunterShooter()
-
     def act(self, board):
-        if random.random() < 0.1:
-            return self.hunter.shoot(board)
         board_repr = board.get_repr()
         probabilities = self.actor(np.array([board_repr]))[0]
 
@@ -87,6 +79,19 @@ class ActorCriticShooter(NeuralNetworkShooter):
         super().__init__(model.actor)
 
 
+class HybridActorCriticModel(ActorCriticModel):
+    def __init__(self, good_player, cheat_probability):
+        self.good_player = good_player
+        self.cheat_probability = cheat_probability
+        
+    def act(self, board):
+        if random.random() < self.cheat_probability:
+            return self.good_player.shoot(board)
+        else:
+            return super().act(board)
+
+
+
 def make_actor_critic_model(board_config):
     BOARD_SIZE = board_config.size
     actor = models.Sequential([
@@ -141,39 +146,8 @@ def play_one_game(model: ActorCriticModel, board):
         
     states, actions, discounted_rewards = preprocess_history(states, actions, rewards, 0.9)
     model.learn(states, actions, discounted_rewards)
-
-    print("moves: ", moves)
-    print("reward: ", reward)
     return moves
-
 
 class ActorCriticShooter(NeuralNetworkShooter):
     def __init__(self, model):
         super().__init__(model.actor)
-
-config = TINY_BOARD_CONFIG
-model = make_actor_critic_model(config)
-shooter = ActorCriticShooter(model)
-placer = RandomPlacer(config)
-
-before = np.mean(compare_placer_with_shooter(placer, shooter, 100))
-
-lengths = []
-length = 0
-boards = [Board(placer.place_ships()) for _ in range(100)]
-for i in range(1000):
-    print(i)
-    board = random.choice(boards)
-    length = play_one_game(model, board.clone())
-    lengths.append(length)
-
-after = np.mean(compare_placer_with_shooter(placer, shooter, 100))
-
-print(f"Before: {before}")
-print(f"After: {after}")
-
-print(np.mean(lengths))
-plt.plot(lengths)
-plt.show()
-plt.hist(lengths)
-plt.show()
