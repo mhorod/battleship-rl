@@ -174,17 +174,26 @@ class PredictionBoardDisplay(BoardDisplay):
 
     def draw_tile(self, pos, value):
         super().draw_tile(pos, self.get_prediction_color(value))
-        if value > 0.01:
+        if abs(value) > 0.01:
             self.draw_tile_value(pos, value)
 
     def get_prediction_color(self, value):
         target_color = (50, 93, 213)
-        diff = (255 - target_color[0], 255 -
-                target_color[1], 255 - target_color[2])
-        draw_value = 1 - (1 - value) ** 2
-        draw_value = min(1, max(0, 1 - draw_value))
-        color = (target_color[0] + diff[0] * draw_value, target_color[1] +
-                 diff[1] * draw_value, target_color[2] + diff[2] * draw_value)
+        neg_target_color = (213, 93, 50)
+        if value >= 0:
+            diff = (255 - target_color[0], 255 -
+                    target_color[1], 255 - target_color[2])
+            draw_value = (1 - min(value, 1))**2
+            draw_value = min(1, max(0, draw_value))
+            color = (target_color[0] + diff[0] * draw_value, target_color[1] +
+                    diff[1] * draw_value, target_color[2] + diff[2] * draw_value)
+        else:
+            diff = (255 - neg_target_color[0], 255 -
+                    neg_target_color[1], 255 - neg_target_color[2])
+            draw_value = (1+max(value, -1))**2
+            draw_value = min(1, max(0, draw_value))
+            color = (neg_target_color[0] + diff[0] * draw_value, neg_target_color[1] +
+                    diff[1] * draw_value, neg_target_color[2] + diff[2] * draw_value)
         return color
 
     def draw_tile_value(self, pos, value):

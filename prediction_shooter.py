@@ -20,7 +20,7 @@ class PredictionShooter(Shooter):
         likelihoods = self.predict_raw(board)
         for pos in board_positions(board.config):
             if board[pos] != Tile.EMPTY:
-                likelihoods[pos] = 0
+                likelihoods[pos] = -10000
         return likelihoods
 
     def select_best_pos(self, board) -> tuple:

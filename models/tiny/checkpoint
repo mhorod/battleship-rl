@@ -1,0 +1,2 @@
+model_checkpoint_path: "hybrid_no_q_shooter"
+all_model_checkpoint_paths: "hybrid_no_q_shooter"

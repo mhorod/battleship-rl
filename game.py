@@ -102,7 +102,7 @@ class ShipBoard:
         return result
 
     def get_repr(self):
-        result = np.zeros(self.config.dimensions, dtype=np.int)
+        result = np.zeros(self.config.dimensions, dtype=np.int32)
         for pos in board_positions(self.config):
             if self.ships[pos] is not None:
                 result[pos] = 1
@@ -159,12 +159,12 @@ class Board:
     def __init__(self, ship_board):
         self.ship_board = ship_board
         self.config = ship_board.config
-        self.repr = np.zeros((self.config.size, self.config.size, len(Tile)), dtype=np.int)
+        self.repr = np.zeros((self.config.size, self.config.size, len(Tile)), dtype=np.int32)
         self.repr[:, :, Tile.EMPTY] = 1
         self.ship_tiles = ship_board.count_ship_tiles()
 
     def get_repr(self):
-        return self.repr
+        return self.repr.copy()
 
     def get_ship_repr(self):
         return self.ship_board.get_repr()
