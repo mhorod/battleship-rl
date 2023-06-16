@@ -14,34 +14,71 @@ from policy_gradient_shooter import *
 from hybrid_q_shooter import *
 from hybrid_no_q_shooter import *
 
-board_config = TINY_CONFIG
-#board_config = TINY_BOARD_CONFIG
-display_config = BoardDisplayConfig(board_config, tile_size = 40, margin = 40, info_height = 100)
+def run_tiny():
+    board_config = TINY_CONFIG
+    config_name = "tiny"
+    display_config = BoardDisplayConfig(board_config, tile_size = 40, margin = 40, info_height = 100)
+
+    shooters = [
+        (load_neural_network_model(f"models/{config_name}/neural_network/perceptron.model"), "Perceptron"),
+        (load_neural_network_model(f"models/{config_name}/neural_network/dense.model"), "Dense"),
+        (load_neural_network_model(f"models/{config_name}/neural_network/cnn.model"), "CNN"),
+
+        (load_actor_critic_shooter(f"models/{config_name}/actor_critic/"), "Actor Critic"),
+        (load_actor_critic_shooter(f"models/{config_name}/hybrid_actor_critic"), "Hybrid Actor Critic"),
+
+        (load_hybrid_no_q_shooter(board_config, f"models/{config_name}/hybrid_no_q_shooter"), "Hybrid No Q Shooter"),
+
+        (EvenHunterShooter(), "Even Hunter Shooter"),
+        (MonteCarloShooter(1000), "Monte Carlo Shooter"),
+    ]
+    placer = RandomPlacer(board_config)
+
+    visualization = Visualization(display_config, placer, shooters)
+    visualization.run()
+
+def run_small():
+    board_config = SMALL_CONFIG
+    config_name = "small"
+    display_config = BoardDisplayConfig(board_config, tile_size = 40, margin = 40, info_height = 100)
+
+    shooters = [
+        (load_neural_network_model(f"models/{config_name}/neural_network/perceptron.model"), "Perceptron"),
+        (load_neural_network_model(f"models/{config_name}/neural_network/dense.model"), "Dense"),
+        (load_neural_network_model(f"models/{config_name}/neural_network/cnn.model"), "CNN"),
+
+        (load_actor_critic_shooter(f"models/{config_name}/actor_critic/"), "Actor Critic"),
+        (load_actor_critic_shooter(f"models/{config_name}/hybrid_actor_critic"), "Hybrid Actor Critic"),
+
+        (EvenHunterShooter(), "Even Hunter Shooter"),
+        (MonteCarloShooter(1000), "Monte Carlo Shooter"),
+    ]
+    placer = RandomPlacer(board_config)
+
+    visualization = Visualization(display_config, placer, shooters)
+    visualization.run()
 
 
-# shooter = QShooter(board_config)
-# shooter_name = "Deep Q Shooter"
+def run_standard():
+    board_config = STANDARD_CONFIG
+    config_name = "standard"
+    display_config = BoardDisplayConfig(board_config, tile_size = 40, margin = 40, info_height = 100)
 
-shooter = HybridNoQShooter(board_config)
-shooter_name = "Hybrid No Q Shooter"
+    shooters = [
+        (load_neural_network_model(f"models/{config_name}/neural_network/perceptron.model"), "Perceptron"),
+        (load_neural_network_model(f"models/{config_name}/neural_network/dense.model"), "Dense"),
+        (load_neural_network_model(f"models/{config_name}/neural_network/cnn.model"), "CNN"),
 
-placer = RandomPlacer(board_config)
-shooter.load("models/tiny/hybrid_no_q_shooter")
-# shooter.train(placer)
-# shooter.save("models/tiny/hybrid_no_q_shooter")
+        (load_actor_critic_shooter(f"models/{config_name}/actor_critic/"), "Actor Critic"),
+        (load_actor_critic_shooter(f"models/{config_name}/hybrid_actor_critic"), "Hybrid Actor Critic"),
 
-# shooter = load_model("models/default/cnn.model")
-# shooter_name = "CNN"
+        (EvenHunterShooter(), "Even Hunter Shooter"),
+        (MonteCarloShooter(1000), "Monte Carlo Shooter"),
+    ]
+    placer = RandomPlacer(board_config)
 
-# pichal_placer = PichalPlacer(board_config)
+    visualization = Visualization(display_config, placer, shooters)
+    visualization.run()
 
-# print(pichal_placer.train(shooter))
-# print(pichal_placer.train(shooter))
-# print(pichal_placer.weights)
 
-# plt.hist(compare_placer_with_shooter(pichal_placer, shooter))
-# plt.hist(compare_placer_with_shooter(RandomPlacer(board_config), shooter))
-# plt.show()
-
-visualization = Visualization(display_config, placer, shooter, shooter_name)
-visualization.run()
+run_standard()

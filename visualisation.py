@@ -202,15 +202,18 @@ class PredictionBoardDisplay(BoardDisplay):
 
 
 class Visualization:
-    def __init__(self, config, placer, shooter, shooter_name):
+    def __init__(self, config, placer, shooters):
         pygame.init()
 
         self.config = config
-        self.shooter = shooter
+
+        self.shooters = shooters
+        self.shooter_index = 0
+
         self.placer = placer
         self.board = Board(self.placer.place_ships())
 
-        self.display_count = 3 if isinstance(shooter, PredictionShooter) else 2
+        self.display_count = 3 if any(isinstance(shooter, PredictionShooter) for shooter, _ in shooters) else 2
         self.width = self.get_width()
         self.height = self.get_height()
 
@@ -226,15 +229,32 @@ class Visualization:
             HitBoardDisplay(config, hit_board_surface, self.board)
         ]
 
-        if isinstance(shooter, PredictionShooter):
+        self.prediction_board_display = None
+        if self.display_count == 3:
             prediction_board_surface = self.screen.subsurface(self.get_nth_board_rect(2))
-            self.displays.append(
-                PredictionBoardDisplay(config, prediction_board_surface, self.board, self.shooter)
-            )
+            self.prediction_board_display = PredictionBoardDisplay(config, prediction_board_surface, self.board, self.get_shooter()) 
+            self.displays.append(self.prediction_board_display)
 
         self.info_surface = self.screen.subsurface(self.get_info_rect())
-        self.shooter_name = shooter_name
         self.shots = 0
+
+    
+
+    def get_shooter(self):
+        return self.shooters[self.shooter_index][0]
+    
+    def get_shooter_name(self):
+        return self.shooters[self.shooter_index][1]
+
+    def next_shooter(self):
+        self.shooter_index = (self.shooter_index + 1) % len(self.shooters)
+        if self.prediction_board_display is not None:
+            self.prediction_board_display.shooter = self.get_shooter()
+
+    def prev_shooter(self):
+        self.shooter_index = (self.shooter_index - 1) % len(self.shooters)
+        if self.prediction_board_display is not None:
+            self.prediction_board_display.shooter = self.get_shooter()
 
     def get_width(self):
         boards_width = self.config.board_width * self.display_count
@@ -271,13 +291,37 @@ class Visualization:
                     pygame.quit()
                     return
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-                    self.board.shoot(self.shooter.shoot(self.board))
-                    self.shots += 1
-                    for display in self.displays:
-                        display.update()
+                    self.shoot()
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    return
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                    self.restart()
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
+                    self.next_shooter()
+                    self.update_display()
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
+                    self.prev_shooter()
+                    self.update_display()
 
             self.draw()
             pygame.display.update()
+
+    def shoot(self):
+        self.board.shoot(self.get_shooter().shoot(self.board))
+        self.shots += 1
+        self.update_display()
+
+    def restart(self):
+        self.board = Board(self.placer.place_ships())
+        for display in self.displays:
+            display.board = self.board
+        self.shots = 0
+        self.update_display()
+
+    def update_display(self):
+        for display in self.displays:
+            display.update()
 
     def draw(self):
         self.screen.fill((255, 255, 255))
@@ -292,7 +336,7 @@ class Visualization:
         self.info_surface.blit(shots_text, (self.width / 2 - tw / 2, th / 2))
 
         shooter_name_text = pygame.font.SysFont('Arial', 24).render(
-            "Shooter: " + self.shooter_name, True, (0, 0, 0))
+            "Shooter: " + self.get_shooter_name(), True, (0, 0, 0))
         tw, th = shooter_name_text.get_size()
         self.info_surface.blit(
             shooter_name_text, (self.width / 2 - tw / 2, self.config.info_height / 2 + th / 2))

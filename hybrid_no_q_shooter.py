@@ -129,3 +129,8 @@ class HybridNoQShooter(PredictionShooter):
 
     def train(self, placer):
         self.predictor.train(placer)
+
+def load_hybrid_no_q_shooter(board_config, filename):
+    shooter = HybridNoQShooter(board_config)
+    shooter.load(filename)
+    return shooter
