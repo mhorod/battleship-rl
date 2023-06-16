@@ -3,6 +3,8 @@ from game import np
 from player import *
 from prediction_shooter import *
 from hunter_player import *
+from pathlib import Path
+from configs import *
 
 import tensorflow as tf
 import numpy as np
@@ -28,7 +30,7 @@ class HybridQPredictor(ShipPredictor):
     def __init__(self, board_config: BoardConfig):
         self.board_config = board_config
         self.hunter_predictor = HunterPredictor()
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.0005)
         self.model = agent(board_config)
         self.target_model = agent(board_config)
         self.target_model.set_weights(self.model.get_weights())
@@ -55,7 +57,7 @@ class HybridQPredictor(ShipPredictor):
 
     def update_weights(self, replay_memory):
         BOARD_SIZE = self.board_config.size
-        discount_factor = 1
+        discount_factor = 0.3
 
         MIN_REPLAY_SIZE = 1000
         if len(replay_memory) < MIN_REPLAY_SIZE:
@@ -64,7 +66,6 @@ class HybridQPredictor(ShipPredictor):
         batch_size = 64
         mini_batch = random.sample(replay_memory, batch_size)
         current_states = np.array([transition[0] for transition in mini_batch])
-        current_qs_list = self.model(current_states, training=False).numpy()
         new_current_states = np.array([transition[3] for transition in mini_batch])
         future_qs_list = self.target_model(new_current_states, training=False).numpy()
 
@@ -97,12 +98,12 @@ class HybridQPredictor(ShipPredictor):
         train_episodes = 2000
         epsilon = 1
         max_epsilon = 1
-        min_epsilon = 0.05
-        decay = 0.005
+        min_epsilon = 0.03
+        decay = 0.003
         replay_memory = deque(maxlen=10_000)
-        X = []
-        y = []
         steps_to_update_target_model = 0
+
+        game_lengths = []
 
         for episode in range(train_episodes):
             shots = 0
@@ -137,6 +138,7 @@ class HybridQPredictor(ShipPredictor):
                 shots += 1
 
                 if done:
+                    game_lengths.append(shots)
                     print('Total shots : {} after n steps = {}, epsilon={}.'.format(shots, episode, np.round(epsilon*100)/100))
 
                     if steps_to_update_target_model >= 100:
@@ -146,6 +148,7 @@ class HybridQPredictor(ShipPredictor):
                     break
 
             epsilon = min_epsilon + (max_epsilon - min_epsilon) * np.exp(-decay * episode)
+        return game_lengths
 
 class HybridQShooter(PredictionShooter):
     def __init__(self, board_config: BoardConfig):
@@ -159,7 +162,7 @@ class HybridQShooter(PredictionShooter):
         self.predictor.load(filename)
 
     def train(self, placer):
-        self.predictor.train(placer)
+        return self.predictor.train(placer)
     
 def get_reward(shot_result):
     if shot_result == ShotResult.HIT:
@@ -170,3 +173,17 @@ def get_reward(shot_result):
         return -1
     elif shot_result == ShotResult.ILLEGAL:
         return 0
+
+if __name__ == '__main__':
+    board_name = "standard"
+    path = f'plots/loss/{board_name}/hybrid_q_shooter'
+    Path(path).mkdir(parents=True, exist_ok=True)
+    shooter = HybridQShooter(STANDARD_CONFIG)
+    placer = RandomPlacer(STANDARD_CONFIG)
+    lengths = shooter.train(placer)
+    plt.plot(lengths)
+    plt.title(f"Hybrid Q Shooter game lengths during training on {board_name} board")
+    plt.xlabel("games played")
+    plt.ylabel("game length")
+    plt.savefig(f"plots/loss/{board_name}/hybrid_q_shooter/game_lengths.png")
+    shooter.save(f"models/{board_name}/hybrid_q_shooter")

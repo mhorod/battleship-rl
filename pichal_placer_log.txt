@@ -1,0 +1,72 @@
+Actor Critic model on tiny board with pichal: mean = 20.76, std = 3.2806096994308844
+Actor Critic model on tiny board with random: mean = 19.48, std = 4.112128402664489
+Hybrid Actor Critic model on tiny board with pichal: mean = 21.37, std = 2.5086051901405297
+Hybrid Actor Critic model on tiny board with random: mean = 20.15, std = 4.546152219184923
+Naive Bayes model on tiny board with pichal: mean = 25.0, std = 0.0
+Naive Bayes model on tiny board with random: mean = 21.92, std = 2.7988569095257443
+Random model on tiny board with pichal: mean = 21.99, std = 3.214016179175208
+Random model on tiny board with random: mean = 21.86, std = 2.8601398567202962
+Hunter model on tiny board with pichal: mean = 13.48, std = 3.5368912903848204
+Hunter model on tiny board with random: mean = 13.46, std = 3.6480679818227073
+Even Hunter model on tiny board with pichal: mean = 12.66, std = 2.6952550899682945
+Even Hunter model on tiny board with random: mean = 12.38, std = 2.784887789480933
+Perceptron model on tiny board with pichal: mean = 14.92, std = 3.3784019891066843
+Perceptron model on tiny board with random: mean = 11.81, std = 3.4225575232565486
+Dense model on tiny board with pichal: mean = 14.01, std = 3.925544548212388
+Dense model on tiny board with random: mean = 12.01, std = 3.410263919405652
+CNN model on tiny board with pichal: mean = 13.26, std = 3.2729802932495637
+CNN model on tiny board with random: mean = 11.32, std = 2.7780568748677554
+Q Shooter model on tiny board with pichal: mean = 13.97, std = 3.4160064402749595
+Q Shooter model on tiny board with random: mean = 12.74, std = 3.5485771796594756
+Hybrid Q Shooter model on tiny board with pichal: mean = 13.16, std = 3.8541406305426893
+Hybrid Q Shooter model on tiny board with random: mean = 12.4, std = 3.54400902933387
+Hybrid No Q Shooter model on tiny board with pichal: mean = 12.98, std = 3.2217386610338212
+Hybrid No Q Shooter model on tiny board with random: mean = 12.3, std = 3.3541019662496847
+Actor Critic model on small board with pichal: mean = 45.13, std = 3.517541755260341
+Actor Critic model on small board with random: mean = 44.31, std = 4.392482213965129
+Hybrid Actor Critic model on small board with pichal: mean = 33.99, std = 5.920295600728059
+Hybrid Actor Critic model on small board with random: mean = 32.31, std = 5.738806496127919
+Naive Bayes model on small board with pichal: mean = 48.83, std = 0.4910193478876365
+Naive Bayes model on small board with random: mean = 46.74, std = 3.214405077148803
+Random model on small board with pichal: mean = 46.19, std = 2.827348581268324
+Random model on small board with random: mean = 46.35, std = 2.923610781208744
+Hunter model on small board with pichal: mean = 24.83, std = 5.099127376326267
+Hunter model on small board with random: mean = 23.95, std = 4.432550056118938
+Even Hunter model on small board with pichal: mean = 22.81, std = 3.8514802349226724
+Even Hunter model on small board with random: mean = 23.45, std = 3.575961409187744
+Perceptron model on small board with pichal: mean = 26.08, std = 2.5910615585122634
+Perceptron model on small board with random: mean = 20.92, std = 3.3096223349500167
+Dense model on small board with pichal: mean = 26.39, std = 4.789352774645025
+Dense model on small board with random: mean = 22.48, std = 4.508835769907793
+CNN model on small board with pichal: mean = 22.8, std = 2.2715633383201093
+CNN model on small board with random: mean = 20.2, std = 3.1240998703626617
+Q Shooter model on small board with pichal: mean = 24.61, std = 3.9138088864940763
+Q Shooter model on small board with random: mean = 21.6, std = 4.342810150121693
+Hybrid Q Shooter model on small board with pichal: mean = 26.48, std = 5.032852074122585
+Hybrid Q Shooter model on small board with random: mean = 22.71, std = 5.229330741117835
+Hybrid No Q Shooter model on small board with pichal: mean = 25.01, std = 5.6718515495382995
+Hybrid No Q Shooter model on small board with random: mean = 22.5, std = 4.759201613716317
+Actor Critic model on standard board with pichal: mean = 95.63, std = 5.256719509351816
+Actor Critic model on standard board with random: mean = 94.58, std = 4.705698672885888
+Hybrid Actor Critic model on standard board with pichal: mean = 77.53, std = 10.031405684150155
+Hybrid Actor Critic model on standard board with random: mean = 82.41, std = 11.058114667519053
+Naive Bayes model on standard board with pichal: mean = 97.6, std = 3.402939905434711
+Naive Bayes model on standard board with random: mean = 94.82, std = 5.479744519592132
+Random model on standard board with pichal: mean = 95.55, std = 4.652687395473718
+Random model on standard board with random: mean = 95.44, std = 4.870975261690415
+Hunter model on standard board with pichal: mean = 52.5, std = 10.640018796975877
+Hunter model on standard board with random: mean = 53.38, std = 11.062350563962436
+Even Hunter model on standard board with pichal: mean = 47.84, std = 6.671911270393214
+Even Hunter model on standard board with random: mean = 45.77, std = 7.531075620387835
+Perceptron model on standard board with pichal: mean = 66.08, std = 13.224734401869853
+Perceptron model on standard board with random: mean = 51.03, std = 11.676005310036476
+Dense model on standard board with pichal: mean = 64.41, std = 10.704293531102367
+Dense model on standard board with random: mean = 53.38, std = 13.315990387500285
+CNN model on standard board with pichal: mean = 53.9, std = 8.404165633779478
+CNN model on standard board with random: mean = 52.12, std = 9.83898368735308
+Q Shooter model on standard board with pichal: mean = 59.43, std = 11.236774448212442
+Q Shooter model on standard board with random: mean = 55.71, std = 11.728849048393453
+Hybrid Q Shooter model on standard board with pichal: mean = 61.38, std = 13.10402991449577
+Hybrid Q Shooter model on standard board with random: mean = 55.91, std = 13.330487612987005
+Hybrid No Q Shooter model on standard board with pichal: mean = 68.93, std = 10.725907886980943
+Hybrid No Q Shooter model on standard board with random: mean = 59.48, std = 11.596102793611308

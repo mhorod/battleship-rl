@@ -2,6 +2,9 @@ from game import *
 from game import np
 from player import *
 from prediction_shooter import *
+from random_player import *
+from configs import *
+from pathlib import Path
 
 import tensorflow as tf
 import numpy as np
@@ -26,7 +29,9 @@ class QPredictor(ShipPredictor):
 
     def __init__(self, board_config: BoardConfig):
         self.board_config = board_config
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
+        # self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.0005)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.0002)
+        # self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.00005)
         self.model = agent(board_config)
         self.target_model = agent(board_config)
         self.target_model.set_weights(self.model.get_weights())
@@ -48,7 +53,6 @@ class QPredictor(ShipPredictor):
 
     def update_weights(self, replay_memory):
         BOARD_SIZE = self.board_config.size
-        learning_rate = 0.3
         discount_factor = 0.3
 
         MIN_REPLAY_SIZE = 1000
@@ -58,7 +62,6 @@ class QPredictor(ShipPredictor):
         batch_size = 64
         mini_batch = random.sample(replay_memory, batch_size)
         current_states = np.array([transition[0] for transition in mini_batch])
-        current_qs_list = self.model(current_states, training=False).numpy()
         new_current_states = np.array([transition[3] for transition in mini_batch])
         future_qs_list = self.target_model(new_current_states, training=False).numpy()
 
@@ -88,16 +91,15 @@ class QPredictor(ShipPredictor):
     
     def train(self, placer: Placer):
         BOARD_SIZE = self.board_config.size
-        train_episodes = 1000
+        train_episodes = 2000
         epsilon = 1
         max_epsilon = 1
-        min_epsilon = 0.1
-        decay = 0.01
+        min_epsilon = 0.03
+        decay = 0.003
         replay_memory = deque(maxlen=10_000)
-        X = []
-        y = []
         steps_to_update_target_model = 0
 
+        game_lengths = []
         for episode in range(train_episodes):
             shots = 0
             board = Board(placer.place_ships())
@@ -132,6 +134,7 @@ class QPredictor(ShipPredictor):
 
                 if done:
                     print('Total shots : {} after n steps = {}, epsilon={}.'.format(shots, episode, np.round(epsilon*100)/100))
+                    game_lengths.append(shots)
 
                     if steps_to_update_target_model >= 100:
                         print('Copying main network weights to the target network weights')
@@ -140,6 +143,7 @@ class QPredictor(ShipPredictor):
                     break
 
             epsilon = min_epsilon + (max_epsilon - min_epsilon) * np.exp(-decay * episode)
+        return game_lengths
 
 class QShooter(PredictionShooter):
     def __init__(self, board_config: BoardConfig):
@@ -147,7 +151,7 @@ class QShooter(PredictionShooter):
         super().__init__(self.predictor)
 
     def train(self, placer):
-        self.predictor.train(placer)
+        return self.predictor.train(placer)
 
     def save(self, filename):
         self.predictor.save(filename)
@@ -164,3 +168,16 @@ def get_reward(shot_result):
         return -1
     elif shot_result == ShotResult.ILLEGAL:
         return 0
+
+if __name__ == '__main__':
+    path = 'plots/loss/standard/q_shooter'
+    Path(path).mkdir(parents=True, exist_ok=True)
+    shooter = QShooter(STANDARD_CONFIG)
+    placer = RandomPlacer(STANDARD_CONFIG)
+    lengths = shooter.train(placer)
+    plt.plot(lengths)
+    plt.title("Q Shooter game lengths during training on standard board")
+    plt.xlabel("games played")
+    plt.ylabel("game length")
+    plt.savefig("plots/loss/standard/q_shooter/game_lengths2.png")
+    shooter.save("models/standard/q_shooter")
