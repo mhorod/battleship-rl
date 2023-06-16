@@ -1,9 +1,11 @@
+from pathlib import Path
+
 import tensorflow as tf
 from tensorflow.keras import datasets, layers, models
 
 from dataset import *
 from player import *
-from tf_player import NeuralNetworkShooter
+from neural_network_player import NeuralNetworkShooter
 
 class ActorCriticModel:
     def __init__(self, actor, critic):
@@ -80,7 +82,8 @@ class ActorCriticShooter(NeuralNetworkShooter):
 
 
 class HybridActorCriticModel(ActorCriticModel):
-    def __init__(self, good_player, cheat_probability):
+    def __init__(self, actor, critic, good_player, cheat_probability):
+        super().__init__(actor, critic)
         self.good_player = good_player
         self.cheat_probability = cheat_probability
         
@@ -108,6 +111,23 @@ def make_actor_critic_model(board_config):
     ])
 
     return ActorCriticModel(actor, critic)
+
+def make_hybrid_actor_critic_model(board_config, good_player, cheat_probability):
+    BOARD_SIZE = board_config.size
+    actor = models.Sequential([
+        layers.Flatten(input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
+        layers.Dense(32),
+        layers.Dense(BOARD_SIZE * BOARD_SIZE, activation='softmax'),
+        layers.Reshape((BOARD_SIZE, BOARD_SIZE))
+    ])
+
+    critic = models.Sequential([
+        layers.Flatten(input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
+        layers.Dense(32, activation='relu'),
+        layers.Dense(1, activation='relu'),
+    ])
+
+    return HybridActorCriticModel(actor, critic, good_player, cheat_probability)
 
 
 def preprocess_history(states, actions, rewards, gamma):
@@ -146,8 +166,18 @@ def play_one_game(model: ActorCriticModel, board):
         
     states, actions, discounted_rewards = preprocess_history(states, actions, rewards, 0.9)
     model.learn(states, actions, discounted_rewards)
-    return moves
+    return moves, rewards[-1]
 
 class ActorCriticShooter(NeuralNetworkShooter):
     def __init__(self, model):
         super().__init__(model.actor)
+
+def save_actor_critic_model(model, path):
+    Path(path).mkdir(parents=True, exist_ok=True)
+    model.actor.save(f'{path}/actor.model')
+    model.critic.save(f'{path}/critic.model')
+
+def load_actor_critic_shooter(path):
+    actor = tf.keras.models.load_model(f'{path}/actor.model')
+    critic = tf.keras.models.load_model(f'{path}/critic.model')
+    return ActorCriticShooter(ActorCriticModel(actor, critic))

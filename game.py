@@ -21,23 +21,21 @@ class BoardConfig:
     def tiles(self):
         return self.size * self.size
 
-DEFAULT_BOARD_CONFIG = BoardConfig(
-    10,
-    [
-        ShipConfig(length=5, count=1),
-        ShipConfig(length=4, count=1),
-        ShipConfig(length=3, count=2),
-        ShipConfig(length=2, count=1),
-    ]
-)
+    def to_numpy(self):
+        result = np.zeros(1 + len(self.ships) * 2, dtype=np.int32)
+        result[0] = self.size
+        for i, ship in enumerate(self.ships):
+            result[2 * i + 1] = ship.length
+            result[2 * i + 2] = ship.count
+        return result
 
-TINY_BOARD_CONFIG = BoardConfig(
-    5,
-    [
-        ShipConfig(length=3, count=1),
-        ShipConfig(length=2, count=1),
-    ]
-)
+    @staticmethod
+    def from_numpy(arr):
+        size = arr[0]
+        ships = []
+        for i in range(1, len(arr), 2):
+            ships.append(ShipConfig(arr[i], arr[i + 1]))
+        return BoardConfig(size, ships)
 
 class Tile(IntEnum):
     EMPTY = 0
@@ -149,7 +147,7 @@ class ShipBoard:
 
     def sunken_ships(self):
         sunken = set()
-        for pos in board_positions(self.config.size):
+        for pos in board_positions(self.config):
             ship = self.ships[pos]
             if ship is not None and np.all(ship.hits):
                 sunken.add(ship)
