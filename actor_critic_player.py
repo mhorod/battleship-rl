@@ -47,11 +47,11 @@ class ActorCriticModel:
         return actor_loss, critic_loss
 
 
-    def actor_loss(self, probabilities, action, td):
+    def actor_loss(self, probabilities, actions, td):
         action_probabilities = []
-        for i in range(len(action)):
-            r, c = action[i]
-            action_probabilities.append(probabilities[i][r][c])
+        for prob, action in zip(probabilities, actions):
+            r, c = action
+            action_probabilities.append(prob[r][c])
 
 
         action_probabilities = tf.convert_to_tensor(action_probabilities)
@@ -60,12 +60,11 @@ class ActorCriticModel:
         policy_losses = []
         entropy_losses = []
 
-        for prob, t, log_prob in zip(action_probabilities, td, log_probabilities):
-            policy_losses.append(tf.math.multiply(log_prob, t))
-            entropy_losses.append(tf.math.negative(tf.math.multiply(prob, log_prob)))
+        policy_losses = tf.math.multiply(log_probabilities, td)
+        entropy_losses = tf.math.negative(tf.math.multiply(action_probabilities, log_probabilities))
 
-        p_loss = tf.reduce_mean(tf.stack(policy_losses))
-        e_loss = tf.reduce_mean(tf.stack(entropy_losses))
+        p_loss = tf.reduce_mean(policy_losses)
+        e_loss = tf.reduce_mean(entropy_losses)
 
         loss = -p_loss - 0.001 * e_loss
 
@@ -114,16 +113,17 @@ def make_actor_critic_model(board_config):
 
 def make_hybrid_actor_critic_model(board_config, good_player, cheat_probability):
     BOARD_SIZE = board_config.size
+    hidden = int(BOARD_SIZE * BOARD_SIZE * 1.25)
     actor = models.Sequential([
         layers.Flatten(input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
-        layers.Dense(32),
+        layers.Dense(hidden),
         layers.Dense(BOARD_SIZE * BOARD_SIZE, activation='softmax'),
         layers.Reshape((BOARD_SIZE, BOARD_SIZE))
     ])
 
     critic = models.Sequential([
         layers.Flatten(input_shape=(BOARD_SIZE, BOARD_SIZE, len(Tile))),
-        layers.Dense(32, activation='relu'),
+        layers.Dense(hidden, activation='relu'),
         layers.Dense(1, activation='relu'),
     ])
 

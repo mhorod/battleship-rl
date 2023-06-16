@@ -43,7 +43,6 @@ def fit_neural_network_models_on_config(board_config, config_name):
 
 def plot_history(history, model_name, config_name, plot_path):
     fig, ax = plt.subplots()
-    fig.set_size_inches(10, 10)
     ax.plot(history.history['loss'], label='loss')
     ax.plot(history.history['val_loss'], label='val_loss')
     ax.set_ylim(0, 1)
@@ -94,7 +93,6 @@ def fit_actor_critic_model(board_config, config_name):
     save_actor_critic_model(model, model_path)
 
     f1, ax1 = plt.subplots()
-    f1.set_size_inches(10, 10)
     ax1.plot(lengths)
     ax1.set_xlabel('Game')
     ax1.set_ylabel('Length')
@@ -103,7 +101,6 @@ def fit_actor_critic_model(board_config, config_name):
     f1.savefig(f'{plot_path}/lengths.png')
 
     f2, ax2 = plt.subplots()
-    f2.set_size_inches(10, 10)
     ax2.plot(rewards)
     ax2.set_xlabel('Game')
     ax2.set_ylabel('Reward')
@@ -117,6 +114,50 @@ def fit_actor_critic_models():
         print(f'Fitting actor-critic model for {config_name} board')
         fit_actor_critic_model(board_config, config_name)
 
+def fit_actor_critic_model_on_one_board(board_config, config_name):
+    model_path = f'models/{config_name}/actor_critic_one_board'
+    plot_path = f'plots/loss/{config_name}/actor_critic_one_board'
+
+    Path(model_path).mkdir(parents=True, exist_ok=True)
+    Path(plot_path).mkdir(parents=True, exist_ok=True)
+
+    placer = RandomPlacer(board_config)
+    model = make_actor_critic_model(board_config)
+
+    lengths = []
+    rewards = []
+
+    board = Board(placer.place_ships())
+    for i in range(100):
+        print(f'Game {i}')
+        length, reward = play_one_game(model, board.clone())
+
+        lengths.append(length)
+        rewards.append(reward)
+
+    save_actor_critic_model(model, model_path)
+
+    f1, ax1 = plt.subplots()
+    ax1.plot(lengths)
+    ax1.set_xlabel('Game')
+    ax1.set_ylabel('Length')
+    ax1.set_title(f'Lengths for actor-critic model on one {config_name} board')
+    f1.tight_layout()
+    f1.savefig(f'{plot_path}/lengths.png')
+
+    f2, ax2 = plt.subplots()
+    ax2.plot(rewards)
+    ax2.set_xlabel('Game')
+    ax2.set_ylabel('Reward')
+    ax2.set_title(f'Rewards for actor-critic model on one {config_name} board')
+    f2.tight_layout()
+    f2.savefig(f'{plot_path}/rewards.png')
+
+def fit_actor_critic_models_on_one_board():
+    print('Fitting actor-critic models')
+    for board_config, config_name in BOARD_CONFIGS:
+        print(f'Fitting actor-critic model for {config_name} board')
+        fit_actor_critic_model_on_one_board(board_config, config_name)
 
 def fit_hybrid_actor_critic_model(board_config, config_name):
     model_path = f'models/{config_name}/hybrid_actor_critic'
@@ -141,7 +182,6 @@ def fit_hybrid_actor_critic_model(board_config, config_name):
     save_actor_critic_model(model, model_path)
 
     f1, ax1 = plt.subplots()
-    f1.set_size_inches(10, 10)
     ax1.plot(lengths)
     ax1.set_xlabel('Game')
     ax1.set_ylabel('Length')
@@ -150,7 +190,6 @@ def fit_hybrid_actor_critic_model(board_config, config_name):
     f1.savefig(f'{plot_path}/lengths.png')
 
     f2, ax2 = plt.subplots()
-    f2.set_size_inches(10, 10)
     ax2.plot(rewards)
     ax2.set_xlabel('Game')
     ax2.set_ylabel('Reward')
@@ -166,7 +205,11 @@ def fit_hybrid_actor_critic_models():
 
 
 
+
+
+
 #fit_neural_network_models()
 #fit_naive_bayes_models()
 #fit_actor_critic_models()
-fit_hybrid_actor_critic_models()
+#fit_hybrid_actor_critic_models()
+fit_actor_critic_models_on_one_board()
