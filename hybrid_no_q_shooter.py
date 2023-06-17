@@ -2,6 +2,8 @@ from game import *
 from game import np
 from player import *
 from prediction_shooter import *
+from pathlib import Path
+from configs import *
 from hunter_player import *
 
 import tensorflow as tf
@@ -72,13 +74,15 @@ class HybridNoQPredictor(ShipPredictor):
     
     def train(self, placer: Placer):
         BOARD_SIZE = self.board_config.size
-        train_episodes = 5000
+        train_episodes = 2000
         epsilon = 1
         max_epsilon = 1
         min_epsilon = 0.1
-        decay = 0.001
+        decay = 0.003
         replay_memory = deque(maxlen=10_000)
         steps_to_update_target_model = 0
+
+        game_lengths = []
 
         for episode in range(train_episodes):
             shots = 0
@@ -112,9 +116,11 @@ class HybridNoQPredictor(ShipPredictor):
 
 
                 if done:
+                    game_lengths.append(shots)
                     print('Total shots : {} after n steps = {}, epsilon={}.'.format(shots, episode, np.round(epsilon*100)/100))
 
             epsilon = min_epsilon + (max_epsilon - min_epsilon) * np.exp(-decay * episode)
+        return game_lengths
 
 class HybridNoQShooter(PredictionShooter):
     def __init__(self, board_config: BoardConfig):
@@ -128,9 +134,23 @@ class HybridNoQShooter(PredictionShooter):
         self.predictor.load(filename)
 
     def train(self, placer):
-        self.predictor.train(placer)
+        return self.predictor.train(placer)
 
 def load_hybrid_no_q_shooter(board_config, filename):
     shooter = HybridNoQShooter(board_config)
     shooter.load(filename)
     return shooter
+
+if __name__ == '__main__':
+    board_name = "standard"
+    path = f'plots/loss/{board_name}/hybrid_no_q_shooter'
+    Path(path).mkdir(parents=True, exist_ok=True)
+    shooter = HybridNoQShooter(STANDARD_CONFIG)
+    placer = RandomPlacer(STANDARD_CONFIG)
+    lengths = shooter.train(placer)
+    plt.plot(lengths)
+    plt.title(f"Hybrid No Q Shooter game lengths during training on {board_name} board")
+    plt.xlabel("games played")
+    plt.ylabel("game length")
+    plt.savefig(f"plots/loss/{board_name}/hybrid_no_q_shooter/game_lengths.png")
+    shooter.save(f"models/{board_name}/hybrid_no_q_shooter")

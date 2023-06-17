@@ -27,8 +27,8 @@ By default it runs visualisation on `standard` board. To change that go to
 
 ### controls
 
-- `Spacebar` to make one shot
-- `R` to restart with new board
+- <kbd>Spacebar</kbd> to make one shot
+- <kbd>R</kbd> to restart with new board
 - left and right arrows to switch between algorithms (without resetting the
   board)
 

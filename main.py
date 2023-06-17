@@ -81,6 +81,6 @@ def run_standard():
     visualization.run()
 
 
-#run_tiny()
-#run_small()
+# run_tiny()
+# run_small()
 run_standard()
